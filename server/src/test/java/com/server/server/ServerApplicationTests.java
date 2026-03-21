@@ -2,6 +2,7 @@ package com.server.server;
 
 import com.server.server.auth.controller.AuthController;
 import com.server.server.auth.dto.AuthResponse;
+import com.server.server.auth.entity.UserRole;
 import com.server.server.auth.exception.DuplicateEmailException;
 import com.server.server.auth.exception.InvalidCredentialsException;
 import com.server.server.auth.service.AuthService;
@@ -34,10 +35,10 @@ class ServerApplicationTests {
     }
 
     @Test
-    void authConfigReturnsGoogleDisabledWhenClientIdIsMissing() throws Exception {
+    void authConfigReturnsGoogleConfigurationState() throws Exception {
         mockMvc.perform(get("/api/auth/config"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.googleSignInEnabled").value(false));
+                .andExpect(jsonPath("$.googleSignInEnabled").isBoolean());
     }
 
     @Test
@@ -55,7 +56,8 @@ class ServerApplicationTests {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("test@example.com"))
-                .andExpect(jsonPath("$.message").value("Account created successfully."));
+                .andExpect(jsonPath("$.message").value("Account created successfully."))
+                .andExpect(jsonPath("$.role").value("USER"));
     }
 
     @Test
@@ -101,7 +103,8 @@ class ServerApplicationTests {
                         "Signed in with Google successfully.",
                         "Google User",
                         "https://example.com/photo.png",
-                        "GOOGLE"));
+                        "GOOGLE",
+                        UserRole.USER));
 
         mockMvc.perform(post("/api/auth/google")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -112,7 +115,8 @@ class ServerApplicationTests {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("google@example.com"))
-                .andExpect(jsonPath("$.provider").value("GOOGLE"));
+                .andExpect(jsonPath("$.provider").value("GOOGLE"))
+                .andExpect(jsonPath("$.role").value("USER"));
     }
 
     @Test

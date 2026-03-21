@@ -23,6 +23,8 @@ public class User {
 
     private String photoUrl;
 
+    private UserRole role;
+
     private LocalDateTime createdAt;
 
     public String getId() {
@@ -71,6 +73,14 @@ public class User {
 
     public void setPhotoUrl(String photoUrl) {
         this.photoUrl = photoUrl;
+    }
+
+    public UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
     }
 
     public LocalDateTime getCreatedAt() {

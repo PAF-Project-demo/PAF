@@ -5,6 +5,7 @@ export type AuthApiResponse = {
   displayName?: string | null;
   photoUrl?: string | null;
   provider?: string | null;
+  role?: string | null;
 };
 
 export type AuthSession = {
@@ -13,6 +14,7 @@ export type AuthSession = {
   displayName?: string | null;
   photoUrl?: string | null;
   provider?: string | null;
+  role?: string | null;
 };
 
 export const authApiBaseUrl = (
@@ -36,7 +38,8 @@ const isAuthSession = (value: unknown): value is AuthSession => {
       typeof value.email === "string" &&
       (!("displayName" in value) || isNullableString(value.displayName)) &&
       (!("photoUrl" in value) || isNullableString(value.photoUrl)) &&
-      (!("provider" in value) || isNullableString(value.provider))
+      (!("provider" in value) || isNullableString(value.provider)) &&
+      (!("role" in value) || isNullableString(value.role))
   );
 };
 
@@ -121,6 +124,7 @@ export const buildAuthSession = (
       typeof response.displayName === "string" ? response.displayName : null,
     photoUrl: typeof response.photoUrl === "string" ? response.photoUrl : null,
     provider: typeof response.provider === "string" ? response.provider : null,
+    role: typeof response.role === "string" ? response.role : "USER",
   };
 };
 
