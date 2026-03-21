@@ -1,5 +1,6 @@
 package com.server.server.auth.entity;
 
 public enum UserRole {
-    USER
+    USER,
+    ADMIN
 }

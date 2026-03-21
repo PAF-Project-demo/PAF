@@ -21,6 +21,7 @@ import Home from "./pages/Dashboard/Home";
 import {
   RedirectAuthenticatedUser,
   RequireAuth,
+  RequireAdmin,
 } from "./components/auth/AuthRouteGuards";
 
 export default function App() {
@@ -43,7 +44,9 @@ export default function App() {
               <Route path="/form-elements" element={<FormElements />} />
 
               {/* Tables */}
-              <Route path="/basic-tables" element={<BasicTables />} />
+              <Route element={<RequireAdmin />}>
+                <Route path="/basic-tables" element={<BasicTables />} />
+              </Route>
 
               {/* Ui Elements */}
               <Route path="/alerts" element={<Alerts />} />

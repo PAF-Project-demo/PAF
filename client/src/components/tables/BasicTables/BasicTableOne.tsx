@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -5,117 +6,159 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
-
 import Badge from "../../ui/badge/Badge";
+import {
+  authApiBaseUrl,
+  getStoredAuthSession,
+  parseResponsePayload,
+} from "../../../lib/auth";
 
-interface Order {
-  id: number;
-  user: {
-    image: string;
-    name: string;
-    role: string;
-  };
-  projectName: string;
-  team: {
-    images: string[];
-  };
-  status: string;
-  budget: string;
-}
+type UserTableItem = {
+  id: string;
+  email: string;
+  displayName: string;
+  photoUrl?: string | null;
+  provider?: string | null;
+  role?: string | null;
+  createdAt?: string | null;
+};
 
-// Define the table data using the interface
-const tableData: Order[] = [
-  {
-    id: 1,
-    user: {
-      image: "/images/user/user-17.jpg",
-      name: "Lindsey Curtis",
-      role: "Web Designer",
-    },
-    projectName: "Agency Website",
-    team: {
-      images: [
-        "/images/user/user-22.jpg",
-        "/images/user/user-23.jpg",
-        "/images/user/user-24.jpg",
-      ],
-    },
-    budget: "3.9K",
-    status: "Active",
-  },
-  {
-    id: 2,
-    user: {
-      image: "/images/user/user-18.jpg",
-      name: "Kaiya George",
-      role: "Project Manager",
-    },
-    projectName: "Technology",
-    team: {
-      images: ["/images/user/user-25.jpg", "/images/user/user-26.jpg"],
-    },
-    budget: "24.9K",
-    status: "Pending",
-  },
-  {
-    id: 3,
-    user: {
-      image: "/images/user/user-17.jpg",
-      name: "Zain Geidt",
-      role: "Content Writing",
-    },
-    projectName: "Blog Writing",
-    team: {
-      images: ["/images/user/user-27.jpg"],
-    },
-    budget: "12.7K",
-    status: "Active",
-  },
-  {
-    id: 4,
-    user: {
-      image: "/images/user/user-20.jpg",
-      name: "Abram Schleifer",
-      role: "Digital Marketer",
-    },
-    projectName: "Social Media",
-    team: {
-      images: [
-        "/images/user/user-28.jpg",
-        "/images/user/user-29.jpg",
-        "/images/user/user-30.jpg",
-      ],
-    },
-    budget: "2.8K",
-    status: "Cancel",
-  },
-  {
-    id: 5,
-    user: {
-      image: "/images/user/user-21.jpg",
-      name: "Carla George",
-      role: "Front-end Developer",
-    },
-    projectName: "Website",
-    team: {
-      images: [
-        "/images/user/user-31.jpg",
-        "/images/user/user-32.jpg",
-        "/images/user/user-33.jpg",
-      ],
-    },
-    budget: "4.5K",
-    status: "Active",
-  },
-];
+const tableColumnCount = 5;
+
+const formatJoinedDate = (createdAt?: string | null) => {
+  if (!createdAt) {
+    return "Unavailable";
+  }
+
+  const parsedDate = new Date(createdAt);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "Unavailable";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsedDate);
+};
+
+const getRoleBadgeColor = (role: string) => {
+  switch (role) {
+    case "ADMIN":
+      return "dark" as const;
+    case "USER":
+      return "primary" as const;
+    default:
+      return "info" as const;
+  }
+};
+
+const getUserInitials = (displayName: string, email: string) => {
+  const source = displayName.trim() || email.trim();
+  const words = source.split(/[\s@._-]+/).filter(Boolean);
+
+  if (words.length === 0) {
+    return "U";
+  }
+
+  return words
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("");
+};
 
 export default function BasicTableOne() {
+  const [users, setUsers] = useState<UserTableItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    const loadUsers = async () => {
+      try {
+        setIsLoading(true);
+        setError("");
+
+        const authSession = getStoredAuthSession();
+        if (!authSession?.userId) {
+          setError("You must be signed in as an admin to view users.");
+          return;
+        }
+
+        const response = await fetch(`${authApiBaseUrl}/api/users`, {
+          signal: abortController.signal,
+          headers: {
+            "X-Auth-User-Id": authSession.userId,
+          },
+        });
+        const rawResponse = await response.text();
+        const payload = parseResponsePayload<
+          UserTableItem[] | { message?: string }
+        >(rawResponse);
+
+        if (!response.ok) {
+          const message =
+            typeof payload === "object" &&
+            payload !== null &&
+            "message" in payload &&
+            typeof payload.message === "string"
+              ? payload.message
+              : "Unable to load users right now.";
+          setError(message);
+          return;
+        }
+
+        if (!Array.isArray(payload)) {
+          setError("The server returned an invalid users response.");
+          return;
+        }
+
+        setUsers(
+          payload.map((user) => ({
+            id: user.id,
+            email: user.email,
+            displayName:
+              typeof user.displayName === "string" && user.displayName.trim()
+                ? user.displayName.trim()
+                : user.email,
+            photoUrl:
+              typeof user.photoUrl === "string" && user.photoUrl.trim()
+                ? user.photoUrl
+                : null,
+            provider:
+              typeof user.provider === "string" && user.provider.trim()
+                ? user.provider.toUpperCase()
+                : "LOCAL",
+            role:
+              typeof user.role === "string" && user.role.trim()
+                ? user.role.toUpperCase()
+                : "USER",
+            createdAt: user.createdAt ?? null,
+          }))
+        );
+      } catch (fetchError) {
+        if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
+          return;
+        }
+
+        setError("Cannot reach the server to load users.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadUsers();
+
+    return () => {
+      abortController.abort();
+    };
+  }, []);
+
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-full overflow-x-auto">
-        <div className="min-w-[1102px]">
+        <div className="min-w-[760px]">
           <Table>
-            {/* Table Header */}
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
                 <TableCell
@@ -128,93 +171,115 @@ export default function BasicTableOne() {
                   isHeader
                   className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
-                  Project Name
+                  Email
                 </TableCell>
                 <TableCell
                   isHeader
                   className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
-                  Team
+                  Provider
                 </TableCell>
                 <TableCell
                   isHeader
                   className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
-                  Status
+                  Role
                 </TableCell>
                 <TableCell
                   isHeader
                   className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
-                  Budget
+                  Joined
                 </TableCell>
               </TableRow>
             </TableHeader>
-
-            {/* Table Body */}
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {tableData.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="px-5 py-4 sm:px-6 text-start">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 overflow-hidden rounded-full">
-                        <img
-                          width={40}
-                          height={40}
-                          src={order.user.image}
-                          alt={order.user.name}
-                        />
-                      </div>
-                      <div>
-                        <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                          {order.user.name}
-                        </span>
-                        <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                          {order.user.role}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                    {order.projectName}
-                  </TableCell>
-                  <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                    <div className="flex -space-x-2">
-                      {order.team.images.map((teamImage, index) => (
-                        <div
-                          key={index}
-                          className="w-6 h-6 overflow-hidden border-2 border-white rounded-full dark:border-gray-900"
-                        >
-                          <img
-                            width={24}
-                            height={24}
-                            src={teamImage}
-                            alt={`Team member ${index + 1}`}
-                            className="w-full size-6"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                    <Badge
-                      size="sm"
-                      color={
-                        order.status === "Active"
-                          ? "success"
-                          : order.status === "Pending"
-                          ? "warning"
-                          : "error"
-                      }
-                    >
-                      {order.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                    {order.budget}
+              {isLoading ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={tableColumnCount}
+                    className="px-5 py-6 text-center text-theme-sm text-gray-500 dark:text-gray-400"
+                  >
+                    Loading users...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : null}
+
+              {!isLoading && error ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={tableColumnCount}
+                    className="px-5 py-6 text-center text-theme-sm text-error-600 dark:text-error-400"
+                  >
+                    {error}
+                  </TableCell>
+                </TableRow>
+              ) : null}
+
+              {!isLoading && !error && users.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={tableColumnCount}
+                    className="px-5 py-6 text-center text-theme-sm text-gray-500 dark:text-gray-400"
+                  >
+                    No users have signed in yet.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+
+              {!isLoading &&
+                !error &&
+                users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="px-5 py-4 sm:px-6 text-start">
+                      <div className="flex items-center gap-3">
+                        {user.photoUrl ? (
+                          <div className="h-10 w-10 overflow-hidden rounded-full">
+                            <img
+                              width={40}
+                              height={40}
+                              src={user.photoUrl}
+                              alt={user.displayName}
+                              className="h-10 w-10 rounded-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/10 text-theme-sm font-semibold text-brand-500 dark:bg-brand-500/20 dark:text-brand-400">
+                            {getUserInitials(user.displayName, user.email)}
+                          </div>
+                        )}
+                        <div>
+                          <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                            {user.displayName}
+                          </span>
+                          <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
+                            {user.displayName === user.email
+                              ? "Using email as display name"
+                              : "Display name available"}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-500 dark:text-gray-400">
+                      {user.email}
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-500 dark:text-gray-400">
+                      {user.provider}
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-500 dark:text-gray-400">
+                      <Badge
+                        size="sm"
+                        variant="solid"
+                        color={getRoleBadgeColor(user.role ?? "USER")}
+                      >
+                        {user.role ?? "USER"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-theme-sm text-gray-500 dark:text-gray-400">
+                      {formatJoinedDate(user.createdAt)}
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </div>

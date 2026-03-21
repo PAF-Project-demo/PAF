@@ -2,6 +2,7 @@ package com.server.server.common;
 
 import com.server.server.auth.exception.AuthConfigurationException;
 import com.server.server.auth.exception.DuplicateEmailException;
+import com.server.server.auth.exception.ForbiddenAccessException;
 import com.server.server.auth.exception.InvalidCredentialsException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler(ForbiddenAccessException.class)
+    public ResponseEntity<ApiError> handleForbiddenAccess(ForbiddenAccessException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiError(exception.getMessage()));
     }
 
     @ExceptionHandler(AuthConfigurationException.class)

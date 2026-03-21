@@ -16,6 +16,7 @@ import {
   UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
+import { getStoredAuthSession, isAdminRole } from "../lib/auth";
 import SidebarWidget from "./SidebarWidget";
 
 type NavItem = {
@@ -95,6 +96,8 @@ const othersItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
+  const authSession = getStoredAuthSession();
+  const canAccessUsers = isAdminRole(authSession?.role);
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -159,6 +162,21 @@ const AppSidebar: React.FC = () => {
       return { type: menuType, index };
     });
   };
+
+  const visibleNavItems = navItems
+    .map((nav) => {
+      if (nav.name !== "Tables" || !nav.subItems) {
+        return nav;
+      }
+
+      return {
+        ...nav,
+        subItems: nav.subItems.filter(
+          (subItem) => subItem.path !== "/basic-tables" || canAccessUsers
+        ),
+      };
+    })
+    .filter((nav) => !nav.subItems || nav.subItems.length > 0);
 
   const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
     <ul className="flex flex-col gap-4">
@@ -348,7 +366,7 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots className="size-6" />
                 )}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(visibleNavItems, "main")}
             </div>
             <div className="">
               <h2
