@@ -1,5 +1,5 @@
-import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { FormEvent, useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
@@ -7,9 +7,12 @@ import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import GoogleSignInButton from "./GoogleSignInButton";
 import LoadingIndicator from "../common/LoadingIndicator";
+import { useNotification } from "../common/NotificationProvider";
 import {
   authApiBaseUrl,
   buildAuthSession,
+  formatRoleLabel,
+  getApiMessage,
   parseResponsePayload,
   persistAuthSession,
   type AuthApiResponse,
@@ -30,8 +33,14 @@ const initialFormData: FormData = {
   password: "",
 };
 
+type SignInLocationState = {
+  email?: string;
+} | null;
+
 export default function SignInForm() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { showNotification } = useNotification();
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
@@ -47,6 +56,25 @@ export default function SignInForm() {
   const loadingDescription = isGoogleSubmitting
     ? "Please wait while we verify your Google account."
     : "Please wait while we verify your credentials.";
+
+  useEffect(() => {
+    const locationState = location.state as SignInLocationState;
+
+    if (typeof locationState?.email !== "string" || !locationState.email.trim()) {
+      return;
+    }
+
+    const prefilledEmail = locationState.email.trim();
+
+    setFormData((currentFormData) =>
+      currentFormData.email.trim()
+        ? currentFormData
+        : {
+            ...currentFormData,
+            email: prefilledEmail,
+          }
+    );
+  }, [location.state]);
 
   const validateForm = () => {
     const nextErrors: FormErrors = {};
@@ -80,12 +108,19 @@ export default function SignInForm() {
   };
 
   const finishAuthentication = (
-    payload: Partial<AuthApiResponse> & { message?: string }
+    payload: Partial<AuthApiResponse> & { message?: string },
+    successTitle: string
   ) => {
     const authSession = buildAuthSession(payload);
 
     if (!authSession) {
-      setServerError("The server response was missing account details.");
+      const message = "The server response was missing account details.";
+      setServerError(message);
+      showNotification({
+        variant: "error",
+        title: "Sign-in failed",
+        message,
+      });
       return false;
     }
 
@@ -93,6 +128,16 @@ export default function SignInForm() {
     setFormData(initialFormData);
     setErrors({});
     setShowPassword(false);
+    const responseMessage = getApiMessage(payload, "Signed in successfully.");
+    const notificationMessage =
+      typeof payload.role === "string" && payload.role.trim()
+        ? `${responseMessage} Access level: ${formatRoleLabel(payload.role)}.`
+        : responseMessage;
+    showNotification({
+      variant: "success",
+      title: successTitle,
+      message: notificationMessage,
+    });
     navigate("/", { replace: true });
     return true;
   };
@@ -126,22 +171,37 @@ export default function SignInForm() {
       >(rawResponse);
 
       if (!response.ok) {
-        const message =
-          typeof payload?.message === "string"
-            ? payload.message
-            : "Unable to sign in right now.";
+        const message = getApiMessage(payload, "Unable to sign in right now.");
         setServerError(message);
+        showNotification({
+          variant: "error",
+          title: "Sign-in failed",
+          message,
+        });
         return;
       }
 
       if (!payload) {
-        setServerError("The server returned an empty response.");
+        const message = "The server returned an empty response.";
+        setServerError(message);
+        showNotification({
+          variant: "error",
+          title: "Sign-in failed",
+          message,
+        });
         return;
       }
 
-      finishAuthentication(payload);
+      finishAuthentication(payload, "Sign-in successful");
     } catch {
-      setServerError("Cannot reach the server. Make sure Spring Boot is running.");
+      const message =
+        "Cannot reach the server. Make sure Spring Boot is running.";
+      setServerError(message);
+      showNotification({
+        variant: "error",
+        title: "Sign-in failed",
+        message,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -169,22 +229,40 @@ export default function SignInForm() {
       >(rawResponse);
 
       if (!response.ok) {
-        const message =
-          typeof payload?.message === "string"
-            ? payload.message
-            : "Unable to sign in with Google right now.";
+        const message = getApiMessage(
+          payload,
+          "Unable to sign in with Google right now."
+        );
         setServerError(message);
+        showNotification({
+          variant: "error",
+          title: "Google sign-in failed",
+          message,
+        });
         return;
       }
 
       if (!payload) {
-        setServerError("The server returned an empty response.");
+        const message = "The server returned an empty response.";
+        setServerError(message);
+        showNotification({
+          variant: "error",
+          title: "Google sign-in failed",
+          message,
+        });
         return;
       }
 
-      finishAuthentication(payload);
+      finishAuthentication(payload, "Google sign-in successful");
     } catch {
-      setServerError("Cannot reach the server. Make sure Spring Boot is running.");
+      const message =
+        "Cannot reach the server. Make sure Spring Boot is running.";
+      setServerError(message);
+      showNotification({
+        variant: "error",
+        title: "Google sign-in failed",
+        message,
+      });
     } finally {
       setIsGoogleSubmitting(false);
     }

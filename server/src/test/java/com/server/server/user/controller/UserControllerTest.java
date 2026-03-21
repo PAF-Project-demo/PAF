@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.server.server.auth.entity.UserRole;
 import com.server.server.user.dto.UserTableItemResponse;
+import com.server.server.user.dto.UserRoleUpdateResponse;
 import com.server.server.user.exception.UserNotFoundException;
 import com.server.server.user.service.UserAccessService;
 import com.server.server.user.service.UserManagementService;
@@ -100,14 +101,16 @@ class UserControllerTest {
     @Test
     void updateUserRoleReturnsUpdatedRole() throws Exception {
         given(userManagementService.updateUserRole("user-2", UserRole.MANAGER)).willReturn(
-                new UserTableItemResponse(
-                        "user-2",
-                        "manager@example.com",
-                        "Manager User",
-                        null,
-                        "LOCAL",
-                        UserRole.MANAGER,
-                        LocalDateTime.of(2026, 3, 21, 10, 26, 59)));
+                new UserRoleUpdateResponse(
+                        "User role updated to MANAGER successfully.",
+                        new UserTableItemResponse(
+                                "user-2",
+                                "manager@example.com",
+                                "Manager User",
+                                null,
+                                "LOCAL",
+                                UserRole.MANAGER,
+                                LocalDateTime.of(2026, 3, 21, 10, 26, 59))));
 
         mockMvc.perform(patch("/api/users/user-2/role")
                         .header("X-Auth-User-Id", "admin-user")
@@ -118,8 +121,9 @@ class UserControllerTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("manager@example.com"))
-                .andExpect(jsonPath("$.role").value("MANAGER"));
+                .andExpect(jsonPath("$.message").value("User role updated to MANAGER successfully."))
+                .andExpect(jsonPath("$.user.email").value("manager@example.com"))
+                .andExpect(jsonPath("$.user.role").value("MANAGER"));
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.server.server.user.controller;
 
 import com.server.server.user.dto.UpdateUserRoleRequest;
+import com.server.server.user.dto.UserRoleUpdateResponse;
 import com.server.server.user.dto.UserTableItemResponse;
 import com.server.server.auth.entity.UserRole;
 import com.server.server.user.service.UserAccessService;
@@ -46,7 +47,7 @@ public class UserController {
     }
 
     @PatchMapping("/{targetUserId}/role")
-    public ResponseEntity<UserTableItemResponse> updateUserRole(
+    public ResponseEntity<UserRoleUpdateResponse> updateUserRole(
             @RequestHeader(value = "X-Auth-User-Id", required = false) String userId,
             @PathVariable String targetUserId,
             @Valid @RequestBody UpdateUserRoleRequest request) {

@@ -15,8 +15,11 @@ import { useModal } from "../../../hooks/useModal";
 import Label from "../../form/Label";
 import Input from "../../form/input/InputField";
 import LoadingIndicator from "../../common/LoadingIndicator";
+import { useNotification } from "../../common/NotificationProvider";
 import {
   authApiBaseUrl,
+  formatRoleLabel,
+  getApiMessage,
   getStoredAuthSession,
   isAdminRole,
   parseResponsePayload,
@@ -33,6 +36,11 @@ type UserTableApiItem = {
   provider?: string | null;
   role?: string | null;
   createdAt?: string | null;
+};
+
+type UserRoleUpdateApiResponse = {
+  message?: string;
+  user: UserTableApiItem;
 };
 
 type UserTableItem = {
@@ -158,9 +166,21 @@ const isUserTableApiItem = (value: unknown): value is UserTableApiItem => {
   );
 };
 
+const isUserRoleUpdateApiResponse = (
+  value: unknown
+): value is UserRoleUpdateApiResponse => {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "user" in value &&
+      isUserTableApiItem((value as { user?: unknown }).user)
+  );
+};
+
 export default function BasicTableOne() {
   const navigate = useNavigate();
   const { isOpen, openModal, closeModal } = useModal();
+  const { showNotification } = useNotification();
   const [users, setUsers] = useState<UserTableItem[]>([]);
   const [searchSourceUsers, setSearchSourceUsers] = useState<UserTableItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -392,7 +412,13 @@ export default function BasicTableOne() {
 
     const authSession = getStoredAuthSession();
     if (!authSession?.userId) {
-      setRoleError("You must be signed in as an admin to update roles.");
+      const message = "You must be signed in as an admin to update roles.";
+      setRoleError(message);
+      showNotification({
+        variant: "error",
+        title: "Role update failed",
+        message,
+      });
       return;
     }
 
@@ -416,29 +442,44 @@ export default function BasicTableOne() {
 
       const rawResponse = await response.text();
       const payload = parseResponsePayload<
-        UserTableApiItem | { message?: string }
+        UserRoleUpdateApiResponse | { message?: string }
       >(rawResponse);
 
       if (!response.ok) {
-        const message =
-          typeof payload === "object" &&
-          payload !== null &&
-          "message" in payload &&
-          typeof payload.message === "string"
-            ? payload.message
-            : "Unable to update the user role right now.";
+        const message = getApiMessage(
+          payload,
+          "Unable to update the user role right now."
+        );
         setRoleError(message);
+        showNotification({
+          variant: "error",
+          title: "Role update failed",
+          message,
+        });
         setIsUpdatingRole(false);
         return;
       }
 
-      if (!isUserTableApiItem(payload)) {
-        setRoleError("The server returned an invalid role update response.");
+      if (!isUserRoleUpdateApiResponse(payload)) {
+        const message = "The server returned an invalid role update response.";
+        setRoleError(message);
+        showNotification({
+          variant: "error",
+          title: "Role update failed",
+          message,
+        });
         setIsUpdatingRole(false);
         return;
       }
 
-      const updatedUser = normalizeUser(payload);
+      const updatedUser = normalizeUser(payload.user);
+      const roleChanged = selectedUser.role !== updatedUser.role;
+      const responseMessage = getApiMessage(
+        payload,
+        roleChanged
+          ? `User role updated to ${formatRoleLabel(updatedUser.role)} successfully.`
+          : `User already has the ${formatRoleLabel(updatedUser.role)} role.`
+      );
 
       if (authSession.userId === updatedUser.id) {
         replaceStoredAuthSession({
@@ -448,6 +489,11 @@ export default function BasicTableOne() {
 
         if (!isAdminRole(updatedUser.role)) {
           resetRoleModal();
+          showNotification({
+            variant: "warning",
+            title: "Admin access removed",
+            message: responseMessage,
+          });
           navigate("/", { replace: true });
           return;
         }
@@ -455,8 +501,19 @@ export default function BasicTableOne() {
 
       setRefreshVersion((currentValue) => currentValue + 1);
       resetRoleModal();
+      showNotification({
+        variant: roleChanged ? "success" : "info",
+        title: roleChanged ? "Role updated" : "Role unchanged",
+        message: responseMessage,
+      });
     } catch {
-      setRoleError("Cannot reach the server to update the role.");
+      const message = "Cannot reach the server to update the role.";
+      setRoleError(message);
+      showNotification({
+        variant: "error",
+        title: "Role update failed",
+        message,
+      });
       setIsUpdatingRole(false);
     }
   };

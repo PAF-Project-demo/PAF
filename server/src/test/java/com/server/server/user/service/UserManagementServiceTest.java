@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import com.server.server.auth.entity.User;
 import com.server.server.auth.entity.UserRole;
 import com.server.server.auth.repository.UserRepository;
-import com.server.server.user.dto.UserTableItemResponse;
+import com.server.server.user.dto.UserRoleUpdateResponse;
 import com.server.server.user.exception.UserNotFoundException;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -38,11 +38,12 @@ class UserManagementServiceTest {
 
         UserManagementService userManagementService = new UserManagementService(userRepository);
 
-        UserTableItemResponse response = userManagementService.updateUserRole("user-1", UserRole.MANAGER);
+        UserRoleUpdateResponse response = userManagementService.updateUserRole("user-1", UserRole.MANAGER);
 
-        assertEquals("user-1", response.id());
-        assertEquals(UserRole.MANAGER, response.role());
-        assertEquals("Manager User", response.displayName());
+        assertEquals("User role updated to MANAGER successfully.", response.message());
+        assertEquals("user-1", response.user().id());
+        assertEquals(UserRole.MANAGER, response.user().role());
+        assertEquals("Manager User", response.user().displayName());
         verify(userRepository).save(user);
     }
 

@@ -79,6 +79,31 @@ export const parseResponsePayload = <T>(rawResponse: string): T | null => {
   }
 };
 
+export const getApiMessage = (payload: unknown, fallbackMessage: string) => {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "message" in payload &&
+    typeof payload.message === "string" &&
+    payload.message.trim()
+  ) {
+    return payload.message.trim();
+  }
+
+  return fallbackMessage;
+};
+
+export const formatRoleLabel = (role?: string | null) => {
+  const normalizedRole =
+    typeof role === "string" && role.trim() ? role.trim().toLowerCase() : "user";
+
+  return normalizedRole
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+};
+
 export const getStoredAuthSession = (): AuthSession | null => {
   for (const storage of getAuthStorages()) {
     const rawSession = storage.getItem(AUTH_STORAGE_KEY);
