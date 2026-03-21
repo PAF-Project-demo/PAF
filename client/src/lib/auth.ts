@@ -5,6 +5,7 @@ export type AuthApiResponse = {
   displayName?: string | null;
   photoUrl?: string | null;
   provider?: string | null;
+  role?: string | null;
 };
 
 export type AuthSession = {
@@ -13,6 +14,7 @@ export type AuthSession = {
   displayName?: string | null;
   photoUrl?: string | null;
   provider?: string | null;
+  role?: string | null;
 };
 
 export const authApiBaseUrl = (
@@ -36,7 +38,8 @@ const isAuthSession = (value: unknown): value is AuthSession => {
       typeof value.email === "string" &&
       (!("displayName" in value) || isNullableString(value.displayName)) &&
       (!("photoUrl" in value) || isNullableString(value.photoUrl)) &&
-      (!("provider" in value) || isNullableString(value.provider))
+      (!("provider" in value) || isNullableString(value.provider)) &&
+      (!("role" in value) || isNullableString(value.role))
   );
 };
 
@@ -46,6 +49,16 @@ const getAuthStorages = () => {
   }
 
   return [window.localStorage, window.sessionStorage];
+};
+
+const getStorageContainingAuthSession = () => {
+  for (const storage of getAuthStorages()) {
+    if (storage.getItem(AUTH_STORAGE_KEY)) {
+      return storage;
+    }
+  }
+
+  return null;
 };
 
 const emitAuthChange = () => {
@@ -64,6 +77,31 @@ export const parseResponsePayload = <T>(rawResponse: string): T | null => {
   } catch {
     return null;
   }
+};
+
+export const getApiMessage = (payload: unknown, fallbackMessage: string) => {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "message" in payload &&
+    typeof payload.message === "string" &&
+    payload.message.trim()
+  ) {
+    return payload.message.trim();
+  }
+
+  return fallbackMessage;
+};
+
+export const formatRoleLabel = (role?: string | null) => {
+  const normalizedRole =
+    typeof role === "string" && role.trim() ? role.trim().toLowerCase() : "user";
+
+  return normalizedRole
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
 };
 
 export const getStoredAuthSession = (): AuthSession | null => {
@@ -107,6 +145,22 @@ export const clearAuthSession = () => {
   emitAuthChange();
 };
 
+export const replaceStoredAuthSession = (session: AuthSession) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const selectedStorage =
+    getStorageContainingAuthSession() ?? window.sessionStorage;
+
+  for (const storage of getAuthStorages()) {
+    storage.removeItem(AUTH_STORAGE_KEY);
+  }
+
+  selectedStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  emitAuthChange();
+};
+
 export const buildAuthSession = (
   response: Partial<AuthApiResponse>
 ): AuthSession | null => {
@@ -121,8 +175,12 @@ export const buildAuthSession = (
       typeof response.displayName === "string" ? response.displayName : null,
     photoUrl: typeof response.photoUrl === "string" ? response.photoUrl : null,
     provider: typeof response.provider === "string" ? response.provider : null,
+    role: typeof response.role === "string" ? response.role : "USER",
   };
 };
+
+export const isAdminRole = (role?: string | null) =>
+  typeof role === "string" && role.trim().toUpperCase() === "ADMIN";
 
 export const getUserDisplayName = (email: string) => {
   const [localPart = "Signed In User"] = email.split("@");

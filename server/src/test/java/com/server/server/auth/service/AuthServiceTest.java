@@ -11,6 +11,7 @@ import com.server.server.auth.dto.GoogleSignInRequest;
 import com.server.server.auth.dto.SignInRequest;
 import com.server.server.auth.dto.SignUpRequest;
 import com.server.server.auth.entity.User;
+import com.server.server.auth.entity.UserRole;
 import com.server.server.auth.google.GoogleIdentityVerifier;
 import com.server.server.auth.google.GoogleUserProfile;
 import com.server.server.auth.exception.DuplicateEmailException;
@@ -57,6 +58,7 @@ class AuthServiceTest {
         user.setId("user-123");
         user.setEmail("user@example.com");
         user.setPasswordHash("encoded-password");
+        user.setRole(UserRole.USER);
 
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("secret123", "encoded-password")).thenReturn(true);
@@ -66,6 +68,7 @@ class AuthServiceTest {
         assertEquals("user-123", response.userId());
         assertEquals("user@example.com", response.email());
         assertEquals("Signed in successfully.", response.message());
+        assertEquals(UserRole.USER, response.role());
         verify(userRepository).findByEmail("user@example.com");
     }
 
@@ -81,6 +84,23 @@ class AuthServiceTest {
         assertThrows(
                 InvalidCredentialsException.class,
                 () -> authService.signIn(new SignInRequest("user@example.com", "wrong-password")));
+    }
+
+    @Test
+    void signInAssignsDefaultUserRoleWhenMissing() {
+        User user = new User();
+        user.setId("user-123");
+        user.setEmail("user@example.com");
+        user.setPasswordHash("encoded-password");
+
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret123", "encoded-password")).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AuthResponse response = authService.signIn(new SignInRequest("user@example.com", "secret123"));
+
+        assertEquals(UserRole.USER, response.role());
+        verify(userRepository).save(user);
     }
 
     @Test
@@ -108,6 +128,7 @@ class AuthServiceTest {
         assertEquals("user@example.com", response.email());
         assertEquals("Google User", response.displayName());
         assertEquals("GOOGLE", response.provider());
+        assertEquals(UserRole.USER, response.role());
     }
 
     @Test

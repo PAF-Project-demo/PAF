@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { authApiBaseUrl, parseResponsePayload } from "../../lib/auth";
+import LoadingIndicator from "../common/LoadingIndicator";
 
 type GoogleSignInButtonProps = {
   disabled?: boolean;
@@ -86,6 +87,9 @@ export default function GoogleSignInButton({
   const [isReady, setIsReady] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Loading Google sign-in...");
   const [googleClientId, setGoogleClientId] = useState("");
+  const isLoadingStatus =
+    statusMessage === "Loading Google sign-in..." ||
+    statusMessage === "Checking Google sign-in configuration...";
 
   useEffect(() => {
     onCredentialRef.current = onCredential;
@@ -235,7 +239,11 @@ export default function GoogleSignInButton({
       <div ref={buttonContainerRef} className="flex w-full justify-center" />
       {!isReady ? (
         <div className="flex h-12 w-full items-center justify-center rounded-lg border border-gray-200 bg-gray-100 px-4 text-sm text-gray-500 dark:border-gray-800 dark:bg-white/5 dark:text-gray-400">
-          {statusMessage}
+          {isLoadingStatus ? (
+            <LoadingIndicator label={statusMessage} size="sm" />
+          ) : (
+            statusMessage
+          )}
         </div>
       ) : null}
     </div>

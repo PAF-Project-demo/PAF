@@ -1,9 +1,16 @@
 import { FormEvent, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
-import { authApiBaseUrl, parseResponsePayload } from "../../lib/auth";
+import Button from "../ui/button/Button";
+import LoadingIndicator from "../common/LoadingIndicator";
+import { useNotification } from "../common/NotificationProvider";
+import {
+  authApiBaseUrl,
+  getApiMessage,
+  parseResponsePayload,
+} from "../../lib/auth";
 
 type FormData = {
   email: string;
@@ -21,11 +28,12 @@ const initialFormData: FormData = {
 };
 
 export default function SignUpForm() {
+  const navigate = useNavigate();
+  const { showNotification } = useNotification();
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
@@ -58,19 +66,18 @@ export default function SignUpForm() {
       [field]: undefined,
     }));
     setServerError("");
-    setSuccessMessage("");
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setServerError("");
-    setSuccessMessage("");
 
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
+    const trimmedEmail = formData.email.trim();
 
     try {
       const response = await fetch(`${authApiBaseUrl}/api/auth/signup`, {
@@ -79,7 +86,7 @@ export default function SignUpForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: formData.email.trim(),
+          email: trimmedEmail,
           password: formData.password,
         }),
       });
@@ -88,24 +95,46 @@ export default function SignUpForm() {
       const payload = parseResponsePayload<{ message?: string }>(rawResponse);
 
       if (!response.ok) {
-        const message =
-          typeof payload?.message === "string"
-            ? payload.message
-            : "Unable to create your account right now.";
+        const message = getApiMessage(
+          payload,
+          "Unable to create your account right now."
+        );
         setServerError(message);
+        showNotification({
+          variant: "error",
+          title: "Sign-up failed",
+          message,
+        });
         return;
       }
 
-      setSuccessMessage(
-        typeof payload?.message === "string"
-          ? payload.message
-          : "Account created successfully."
+      const message = getApiMessage(
+        payload,
+        "Account created successfully. Sign in with your new account."
       );
       setFormData(initialFormData);
       setErrors({});
       setShowPassword(false);
+      showNotification({
+        variant: "success",
+        title: "Account created",
+        message,
+      });
+      navigate("/signin", {
+        replace: true,
+        state: {
+          email: trimmedEmail,
+        },
+      });
     } catch {
-      setServerError("Cannot reach the server. Make sure Spring Boot is running.");
+      const message =
+        "Cannot reach the server. Make sure Spring Boot is running.";
+      setServerError(message);
+      showNotification({
+        variant: "error",
+        title: "Sign-up failed",
+        message,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -146,6 +175,7 @@ export default function SignUpForm() {
                   value={formData.email}
                   onChange={(event) => handleChange("email", event.target.value)}
                   placeholder="Enter your email"
+                  disabled={isSubmitting}
                   error={Boolean(errors.email)}
                   hint={errors.email}
                 />
@@ -165,6 +195,7 @@ export default function SignUpForm() {
                       handleChange("password", event.target.value)
                     }
                     placeholder="Enter your password"
+                    disabled={isSubmitting}
                     error={Boolean(errors.password)}
                     hint={errors.password}
                   />
@@ -187,20 +218,19 @@ export default function SignUpForm() {
                 </div>
               ) : null}
 
-              {successMessage ? (
-                <div className="rounded-lg border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400">
-                  {successMessage}
-                </div>
-              ) : null}
-
               <div>
-                <button
-                  type="submit"
+                <Button
+                  className="w-full"
+                  size="sm"
                   disabled={isSubmitting}
-                  className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-brand-500 shadow-theme-xs hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-brand-300"
+                  startIcon={
+                    isSubmitting ? (
+                      <LoadingIndicator size="sm" tone="inverse" />
+                    ) : undefined
+                  }
                 >
-                  {isSubmitting ? "Creating account..." : "Sign Up"}
-                </button>
+                  {isSubmitting ? "Creating account" : "Sign Up"}
+                </Button>
               </div>
             </div>
           </form>

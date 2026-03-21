@@ -5,6 +5,7 @@ import com.server.server.auth.dto.GoogleSignInRequest;
 import com.server.server.auth.dto.SignInRequest;
 import com.server.server.auth.dto.SignUpRequest;
 import com.server.server.auth.entity.User;
+import com.server.server.auth.entity.UserRole;
 import com.server.server.auth.google.GoogleIdentityVerifier;
 import com.server.server.auth.google.GoogleUserProfile;
 import com.server.server.auth.exception.DuplicateEmailException;
@@ -42,6 +43,7 @@ public class AuthService {
         User user = new User();
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setRole(UserRole.USER);
         user.setCreatedAt(LocalDateTime.now());
 
         try {
@@ -67,7 +69,8 @@ public class AuthService {
             throw new InvalidCredentialsException("Invalid email or password");
         }
 
-        return buildAuthResponse(user, "Signed in successfully.", "LOCAL");
+        User normalizedUser = ensureUserRole(user);
+        return buildAuthResponse(normalizedUser, "Signed in successfully.", "LOCAL");
     }
 
     public AuthResponse signInWithGoogle(GoogleSignInRequest request) {
@@ -100,6 +103,9 @@ public class AuthService {
         user.setEmail(googleUserProfile.email());
         user.setDisplayName(googleUserProfile.displayName());
         user.setPhotoUrl(googleUserProfile.pictureUrl());
+        if (user.getRole() == null) {
+            user.setRole(UserRole.USER);
+        }
 
         if (isNewUser) {
             user.setCreatedAt(LocalDateTime.now());
@@ -117,12 +123,24 @@ public class AuthService {
     }
 
     private AuthResponse buildAuthResponse(User user, String message, String provider) {
+        UserRole role = user.getRole() != null ? user.getRole() : UserRole.USER;
+
         return new AuthResponse(
                 user.getId(),
                 user.getEmail(),
                 message,
                 user.getDisplayName(),
                 user.getPhotoUrl(),
-                provider);
+                provider,
+                role);
+    }
+
+    private User ensureUserRole(User user) {
+        if (user.getRole() != null) {
+            return user;
+        }
+
+        user.setRole(UserRole.USER);
+        return userRepository.save(user);
     }
 }

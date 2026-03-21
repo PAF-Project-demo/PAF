@@ -39,6 +39,7 @@ export default function UserDropdown() {
     ? authSession.displayName?.trim() || getUserDisplayName(authSession.email)
     : "Guest User";
   const photoUrl = authSession?.photoUrl?.trim() || "/images/user/owner.jpg";
+  const roleLabel = authSession?.role?.trim() || "USER";
 
   return (
     <div className="relative">
@@ -79,9 +80,16 @@ export default function UserDropdown() {
         className="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
       >
         <div>
-          <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
-            {displayName}
-          </span>
+          <div className="flex items-center justify-between gap-3">
+            <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
+              {displayName}
+            </span>
+            {authSession ? (
+              <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                {roleLabel}
+              </span>
+            ) : null}
+          </div>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
             {authSession?.email ?? "Sign in to access your account"}
           </span>
