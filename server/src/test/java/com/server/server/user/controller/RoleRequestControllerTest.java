@@ -2,8 +2,8 @@ package com.server.server.user.controller;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,6 +51,7 @@ class RoleRequestControllerTest {
                         UserRole.MANAGER,
                         "Need manager access.",
                         RoleRequestStatus.PENDING,
+                        null,
                         LocalDateTime.of(2026, 3, 21, 14, 15, 0),
                         LocalDateTime.of(2026, 3, 21, 14, 15, 0),
                         null)));
@@ -76,6 +77,7 @@ class RoleRequestControllerTest {
                                 UserRole.ADMIN,
                                 "Need admin access.",
                                 RoleRequestStatus.PENDING,
+                                null,
                                 LocalDateTime.of(2026, 3, 21, 15, 5, 0),
                                 LocalDateTime.of(2026, 3, 21, 15, 5, 0),
                                 null),
@@ -121,6 +123,7 @@ class RoleRequestControllerTest {
                                 UserRole.MANAGER,
                                 "Need manager access.",
                                 RoleRequestStatus.APPROVED,
+                                null,
                                 LocalDateTime.of(2026, 3, 21, 15, 5, 0),
                                 LocalDateTime.of(2026, 3, 21, 15, 20, 0),
                                 LocalDateTime.of(2026, 3, 21, 15, 20, 0)),
@@ -142,6 +145,40 @@ class RoleRequestControllerTest {
     }
 
     @Test
+    void rejectRoleRequestReturnsUpdatedRequestWithReason() throws Exception {
+        given(roleRequestService.rejectRoleRequest("admin-user", "request-1", "Please add more project details.")).willReturn(
+                new RoleRequestMutationResponse(
+                        "Role request rejected and feedback sent to the requester.",
+                        new RoleRequestItemResponse(
+                                "request-1",
+                                "user-1",
+                                "user@example.com",
+                                "User One",
+                                UserRole.USER,
+                                UserRole.ADMIN,
+                                "Need admin access.",
+                                RoleRequestStatus.REJECTED,
+                                "Please add more project details.",
+                                LocalDateTime.of(2026, 3, 21, 15, 5, 0),
+                                LocalDateTime.of(2026, 3, 21, 15, 22, 0),
+                                LocalDateTime.of(2026, 3, 21, 15, 22, 0)),
+                        null));
+
+        mockMvc.perform(patch("/api/role-requests/request-1/reject")
+                        .header("X-Auth-User-Id", "admin-user")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "rejectionReason": "Please add more project details."
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Role request rejected and feedback sent to the requester."))
+                .andExpect(jsonPath("$.request.status").value("REJECTED"))
+                .andExpect(jsonPath("$.request.rejectionReason").value("Please add more project details."));
+    }
+
+    @Test
     void updateRoleRequestReturnsUpdatedRequest() throws Exception {
         given(roleRequestService.updateRoleRequest("user-1", "request-1", UserRole.ADMIN, "Updated reason.")).willReturn(
                 new RoleRequestMutationResponse(
@@ -155,6 +192,7 @@ class RoleRequestControllerTest {
                                 UserRole.ADMIN,
                                 "Updated reason.",
                                 RoleRequestStatus.PENDING,
+                                null,
                                 LocalDateTime.of(2026, 3, 21, 15, 5, 0),
                                 LocalDateTime.of(2026, 3, 21, 15, 25, 0),
                                 null),
@@ -177,13 +215,13 @@ class RoleRequestControllerTest {
 
     @Test
     void deleteRoleRequestReturnsDeletedRequestId() throws Exception {
-        given(roleRequestService.deleteRoleRequest("admin-user", "request-1")).willReturn(
+        given(roleRequestService.deleteRoleRequest("user-1", "request-1")).willReturn(
                 new RoleRequestDeleteResponse(
                         "Role request deleted successfully.",
                         "request-1"));
 
         mockMvc.perform(delete("/api/role-requests/request-1")
-                        .header("X-Auth-User-Id", "admin-user"))
+                        .header("X-Auth-User-Id", "user-1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Role request deleted successfully."))
                 .andExpect(jsonPath("$.requestId").value("request-1"));

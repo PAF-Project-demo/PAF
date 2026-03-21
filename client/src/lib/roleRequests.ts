@@ -1,7 +1,7 @@
 import { formatRoleLabel } from "./auth";
 import { getRoleBadgeColor, normalizeRole, type UserRoleValue } from "./userRoles";
 
-export type RoleRequestStatusValue = "PENDING" | "APPROVED";
+export type RoleRequestStatusValue = "PENDING" | "APPROVED" | "REJECTED";
 
 export type RoleRequestApiItem = {
   id: string;
@@ -12,6 +12,7 @@ export type RoleRequestApiItem = {
   requestedRole?: string | null;
   description?: string | null;
   status?: string | null;
+  rejectionReason?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   reviewedAt?: string | null;
@@ -26,6 +27,7 @@ export type RoleRequestItem = {
   requestedRole: UserRoleValue;
   description: string;
   status: RoleRequestStatusValue;
+  rejectionReason: string;
   createdAt: string | null;
   updatedAt: string | null;
   reviewedAt: string | null;
@@ -45,7 +47,11 @@ export type RoleRequestDeleteApiResponse = {
   requestId?: string;
 };
 
-const availableStatuses: RoleRequestStatusValue[] = ["PENDING", "APPROVED"];
+const availableStatuses: RoleRequestStatusValue[] = [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+];
 
 export const isRoleRequestApiItem = (
   value: unknown
@@ -102,6 +108,10 @@ export const normalizeRoleRequest = (
       ? roleRequest.description.trim()
       : "",
   status: normalizeRoleRequestStatus(roleRequest.status),
+  rejectionReason:
+    typeof roleRequest.rejectionReason === "string"
+      ? roleRequest.rejectionReason.trim()
+      : "",
   createdAt: roleRequest.createdAt ?? null,
   updatedAt: roleRequest.updatedAt ?? null,
   reviewedAt: roleRequest.reviewedAt ?? null,
@@ -111,6 +121,8 @@ export const getRoleRequestStatusColor = (status: RoleRequestStatusValue) => {
   switch (status) {
     case "APPROVED":
       return "success" as const;
+    case "REJECTED":
+      return "error" as const;
     case "PENDING":
       return "warning" as const;
     default:

@@ -144,6 +144,45 @@ class RoleRequestServiceTest {
     }
 
     @Test
+    void rejectRoleRequestMarksRequestRejectedAndStoresReason() {
+        User adminUser = new User();
+        adminUser.setId("admin-user");
+        adminUser.setEmail("admin@example.com");
+        adminUser.setRole(UserRole.ADMIN);
+
+        RoleRequest roleRequest = new RoleRequest();
+        roleRequest.setId("request-1");
+        roleRequest.setRequesterUserId("user-1");
+        roleRequest.setRequesterEmail("user@example.com");
+        roleRequest.setRequesterDisplayName("User One");
+        roleRequest.setCurrentRole(UserRole.USER);
+        roleRequest.setRequestedRole(UserRole.ADMIN);
+        roleRequest.setDescription("Need admin access.");
+        roleRequest.setStatus(RoleRequestStatus.PENDING);
+        roleRequest.setCreatedAt(LocalDateTime.of(2026, 3, 21, 18, 5, 0));
+        roleRequest.setUpdatedAt(LocalDateTime.of(2026, 3, 21, 18, 5, 0));
+
+        when(userAccessService.getAuthenticatedUser("admin-user")).thenReturn(adminUser);
+        when(roleRequestRepository.findById("request-1")).thenReturn(Optional.of(roleRequest));
+        when(roleRequestRepository.save(any(RoleRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RoleRequestService roleRequestService = new RoleRequestService(
+                roleRequestRepository,
+                userRepository,
+                userAccessService);
+
+        RoleRequestMutationResponse response = roleRequestService.rejectRoleRequest(
+                "admin-user",
+                "request-1",
+                "Please explain why you need admin access.");
+
+        assertEquals("Role request rejected and feedback sent to the requester.", response.message());
+        assertEquals(RoleRequestStatus.REJECTED, response.request().status());
+        assertEquals("Please explain why you need admin access.", response.request().rejectionReason());
+        verify(roleRequestRepository).save(roleRequest);
+    }
+
+    @Test
     void updateRoleRequestUpdatesPendingRequestForRequester() {
         User requester = new User();
         requester.setId("user-1");
@@ -225,7 +264,7 @@ class RoleRequestServiceTest {
 
         assertEquals("Role request deleted successfully.", response.message());
         assertEquals("request-1", response.requestId());
-        verify(userAccessService).assertSelfOrAdmin(
+        verify(userAccessService).assertSelfAccess(
                 "user-1",
                 "user-1",
                 "You can only delete your own role requests.");
@@ -233,7 +272,7 @@ class RoleRequestServiceTest {
     }
 
     @Test
-    void deleteRoleRequestRejectsDifferentStandardUser() {
+    void deleteRoleRequestRejectsDifferentUser() {
         RoleRequest roleRequest = new RoleRequest();
         roleRequest.setId("request-1");
         roleRequest.setRequesterUserId("user-1");
@@ -241,7 +280,7 @@ class RoleRequestServiceTest {
         when(roleRequestRepository.findById("request-1")).thenReturn(Optional.of(roleRequest));
         org.mockito.Mockito.doThrow(new ForbiddenAccessException("You can only delete your own role requests."))
                 .when(userAccessService)
-                .assertSelfOrAdmin("user-2", "user-1", "You can only delete your own role requests.");
+                .assertSelfAccess("user-2", "user-1", "You can only delete your own role requests.");
 
         RoleRequestService roleRequestService = new RoleRequestService(
                 roleRequestRepository,

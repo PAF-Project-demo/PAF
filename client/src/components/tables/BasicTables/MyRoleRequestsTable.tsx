@@ -413,7 +413,7 @@ export default function MyRoleRequestsTable({
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Submit a request when you need higher application access. Admins can
-            review and approve it from the same page.
+            review it and either approve or reject it with feedback.
           </p>
         </div>
 
@@ -536,8 +536,20 @@ export default function MyRoleRequestsTable({
                         {formatRoleLabel(request.currentRole)}
                       </TableCell>
                       <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                        <div className="max-w-xl whitespace-pre-wrap">
-                          {request.description || "No description provided."}
+                        <div className="max-w-xl space-y-3">
+                          <div className="whitespace-pre-wrap">
+                            {request.description || "No description provided."}
+                          </div>
+                          {request.rejectionReason ? (
+                            <div className="rounded-lg border border-error-200 bg-error-50 px-3 py-3 text-xs text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">
+                              <span className="font-semibold">
+                                Why this request was rejected:
+                              </span>{" "}
+                              <span className="whitespace-pre-wrap">
+                                {request.rejectionReason}
+                              </span>
+                            </div>
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-500 dark:text-gray-400">
