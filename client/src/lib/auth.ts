@@ -2,11 +2,17 @@ export type AuthApiResponse = {
   userId: string;
   email: string;
   message: string;
+  displayName?: string | null;
+  photoUrl?: string | null;
+  provider?: string | null;
 };
 
 export type AuthSession = {
   userId: string;
   email: string;
+  displayName?: string | null;
+  photoUrl?: string | null;
+  provider?: string | null;
 };
 
 export const authApiBaseUrl = (
@@ -17,6 +23,9 @@ export const AUTH_CHANGE_EVENT = "paf-auth-change";
 
 const AUTH_STORAGE_KEY = "paf.auth.session";
 
+const isNullableString = (value: unknown) =>
+  value === undefined || value === null || typeof value === "string";
+
 const isAuthSession = (value: unknown): value is AuthSession => {
   return Boolean(
     value &&
@@ -24,7 +33,10 @@ const isAuthSession = (value: unknown): value is AuthSession => {
       "userId" in value &&
       typeof value.userId === "string" &&
       "email" in value &&
-      typeof value.email === "string"
+      typeof value.email === "string" &&
+      (!("displayName" in value) || isNullableString(value.displayName)) &&
+      (!("photoUrl" in value) || isNullableString(value.photoUrl)) &&
+      (!("provider" in value) || isNullableString(value.provider))
   );
 };
 
@@ -93,6 +105,23 @@ export const clearAuthSession = () => {
   }
 
   emitAuthChange();
+};
+
+export const buildAuthSession = (
+  response: Partial<AuthApiResponse>
+): AuthSession | null => {
+  if (typeof response.userId !== "string" || typeof response.email !== "string") {
+    return null;
+  }
+
+  return {
+    userId: response.userId,
+    email: response.email,
+    displayName:
+      typeof response.displayName === "string" ? response.displayName : null,
+    photoUrl: typeof response.photoUrl === "string" ? response.photoUrl : null,
+    provider: typeof response.provider === "string" ? response.provider : null,
+  };
 };
 
 export const getUserDisplayName = (email: string) => {

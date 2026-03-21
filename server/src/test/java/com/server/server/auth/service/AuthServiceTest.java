@@ -2,13 +2,17 @@ package com.server.server.auth.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.server.server.auth.dto.AuthResponse;
+import com.server.server.auth.dto.GoogleSignInRequest;
 import com.server.server.auth.dto.SignInRequest;
 import com.server.server.auth.dto.SignUpRequest;
 import com.server.server.auth.entity.User;
+import com.server.server.auth.google.GoogleIdentityVerifier;
+import com.server.server.auth.google.GoogleUserProfile;
 import com.server.server.auth.exception.DuplicateEmailException;
 import com.server.server.auth.exception.InvalidCredentialsException;
 import com.server.server.auth.repository.UserRepository;
@@ -29,11 +33,14 @@ class AuthServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private GoogleIdentityVerifier googleIdentityVerifier;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, passwordEncoder);
+        authService = new AuthService(userRepository, passwordEncoder, googleIdentityVerifier);
     }
 
     @Test
@@ -74,5 +81,56 @@ class AuthServiceTest {
         assertThrows(
                 InvalidCredentialsException.class,
                 () -> authService.signIn(new SignInRequest("user@example.com", "wrong-password")));
+    }
+
+    @Test
+    void signInWithGoogleCreatesUserWhenEmailDoesNotExist() {
+        GoogleUserProfile googleUserProfile = new GoogleUserProfile(
+                "google-subject-123",
+                "user@example.com",
+                true,
+                "Google User",
+                "https://example.com/photo.png",
+                null);
+
+        when(googleIdentityVerifier.verify("google-token")).thenReturn(googleUserProfile);
+        when(userRepository.findByGoogleSubject("google-subject-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User savedUser = invocation.getArgument(0);
+            savedUser.setId("user-123");
+            return savedUser;
+        });
+
+        AuthResponse response = authService.signInWithGoogle(new GoogleSignInRequest("google-token"));
+
+        assertEquals("user-123", response.userId());
+        assertEquals("user@example.com", response.email());
+        assertEquals("Google User", response.displayName());
+        assertEquals("GOOGLE", response.provider());
+    }
+
+    @Test
+    void signInWithGoogleRejectsExistingPasswordAccount() {
+        User user = new User();
+        user.setId("user-123");
+        user.setEmail("user@example.com");
+        user.setPasswordHash("encoded-password");
+
+        GoogleUserProfile googleUserProfile = new GoogleUserProfile(
+                "google-subject-123",
+                "user@example.com",
+                true,
+                "Google User",
+                "https://example.com/photo.png",
+                null);
+
+        when(googleIdentityVerifier.verify("google-token")).thenReturn(googleUserProfile);
+        when(userRepository.findByGoogleSubject("google-subject-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+
+        assertThrows(
+                InvalidCredentialsException.class,
+                () -> authService.signInWithGoogle(new GoogleSignInRequest("google-token")));
     }
 }
