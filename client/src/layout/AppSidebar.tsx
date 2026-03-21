@@ -6,13 +6,13 @@ import {
   BoxCubeIcon,
   CalenderIcon,
   ChevronDownIcon,
+  GroupIcon,
   GridIcon,
   HorizontaLDots,
   ListIcon,
   PageIcon,
   PieChartIcon,
   PlugInIcon,
-  TableIcon,
   UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
@@ -38,6 +38,15 @@ const navItems: NavItem[] = [
     path: "/calendar",
   },
   {
+    name: "Role Management",
+    icon: <GroupIcon />,
+    subItems: [
+      { name: "Role Requests", path: "/role-requests", pro: false },
+      { name: "Approval Requests", path: "/approval-requests", pro: false },
+      { name: "Signed-In Users", path: "/signed-in-users", pro: false },
+    ],
+  },
+  {
     icon: <UserCircleIcon />,
     name: "User Profile",
     path: "/profile",
@@ -47,15 +56,7 @@ const navItems: NavItem[] = [
     icon: <ListIcon />,
     subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
   },
-  {
-    name: "Role Management",
-    icon: <TableIcon />,
-    subItems: [
-      { name: "Role Requests", path: "/role-requests", pro: false },
-      { name: "Approval Requests", path: "/approval-requests", pro: false },
-      { name: "Signed-In Users", path: "/signed-in-users", pro: false },
-    ],
-  },
+
   {
     name: "Pages",
     icon: <PageIcon />,
