@@ -39,7 +39,7 @@ class UserControllerTest {
 
     @Test
     void getUsersReturnsDisplayNameFallbackAndAdminRole() throws Exception {
-        given(userQueryService.getUsersForTable()).willReturn(List.of(
+        given(userQueryService.getUsersForTable(null, null, null)).willReturn(List.of(
                 new UserTableItemResponse(
                         "user-1",
                         "hettiarachchianuk01@gmail.com",
@@ -62,6 +62,28 @@ class UserControllerTest {
                 .andExpect(jsonPath("$[0].displayName").value("hettiarachchianuk01@gmail.com"))
                 .andExpect(jsonPath("$[0].role").value("USER"))
                 .andExpect(jsonPath("$[1].role").value("ADMIN"));
+    }
+
+    @Test
+    void getUsersSupportsSearchFilters() throws Exception {
+        given(userQueryService.getUsersForTable("Admin", "admin@example.com", UserRole.ADMIN)).willReturn(List.of(
+                new UserTableItemResponse(
+                        "user-2",
+                        "admin@example.com",
+                        "Admin User",
+                        null,
+                        "LOCAL",
+                        UserRole.ADMIN,
+                        LocalDateTime.of(2026, 3, 21, 10, 26, 59))));
+
+        mockMvc.perform(get("/api/users")
+                        .header("X-Auth-User-Id", "admin-user")
+                        .param("displayName", "Admin")
+                        .param("email", "admin@example.com")
+                        .param("role", "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].displayName").value("Admin User"))
+                .andExpect(jsonPath("$[0].role").value("ADMIN"));
     }
 
     @Test

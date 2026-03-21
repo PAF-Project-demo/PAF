@@ -7,11 +7,13 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
-import { PencilIcon } from "../../../icons";
+import { ChevronDownIcon, PencilIcon } from "../../../icons";
 import Badge from "../../ui/badge/Badge";
 import Button from "../../ui/button/Button";
 import { Modal } from "../../ui/modal";
 import { useModal } from "../../../hooks/useModal";
+import Label from "../../form/Label";
+import Input from "../../form/input/InputField";
 import {
   authApiBaseUrl,
   getStoredAuthSession,
@@ -56,7 +58,20 @@ const roleDescriptions: Record<UserRoleValue, string> = {
   ADMIN: "Full administrative access to protected features.",
 };
 
+type UserFilters = {
+  displayName: string;
+  email: string;
+  role: "" | UserRoleValue;
+};
+
+const initialFilters: UserFilters = {
+  displayName: "",
+  email: "",
+  role: "",
+};
+
 const tableColumnCount = 6;
+const maxSearchSuggestions = 6;
 
 const normalizeRole = (role?: string | null): UserRoleValue => {
   const normalizedRole =
@@ -146,12 +161,22 @@ export default function BasicTableOne() {
   const navigate = useNavigate();
   const { isOpen, openModal, closeModal } = useModal();
   const [users, setUsers] = useState<UserTableItem[]>([]);
+  const [searchSourceUsers, setSearchSourceUsers] = useState<UserTableItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [filters, setFilters] = useState<UserFilters>(initialFilters);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [selectedUser, setSelectedUser] = useState<UserTableItem | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRoleValue>("USER");
   const [roleError, setRoleError] = useState("");
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+  const [activeSuggestionField, setActiveSuggestionField] = useState<
+    "displayName" | "email" | null
+  >(null);
+
+  const hasActiveFilters = Boolean(
+    filters.displayName.trim() || filters.email.trim() || filters.role
+  );
 
   const resetRoleModal = () => {
     closeModal();
@@ -176,8 +201,113 @@ export default function BasicTableOne() {
     openModal();
   };
 
+  const handleFilterChange = (
+    field: keyof UserFilters,
+    value: UserFilters[keyof UserFilters]
+  ) => {
+    setFilters((currentFilters) => ({
+      ...currentFilters,
+      [field]: value,
+    }));
+  };
+
+  const handleSuggestionSelect = (
+    field: "displayName" | "email",
+    value: string
+  ) => {
+    handleFilterChange(field, value);
+    setActiveSuggestionField(null);
+  };
+
+  const getSuggestions = (field: "displayName" | "email") => {
+    const query = filters[field].trim().toLowerCase();
+
+    if (!query) {
+      return [];
+    }
+
+    const seenValues = new Set<string>();
+
+    return searchSourceUsers
+      .map((user) => (field === "displayName" ? user.displayName : user.email))
+      .filter((value) => {
+        const trimmedValue = value.trim();
+
+        if (!trimmedValue) {
+          return false;
+        }
+
+        const normalizedValue = trimmedValue.toLowerCase();
+        if (!normalizedValue.includes(query) || seenValues.has(normalizedValue)) {
+          return false;
+        }
+
+        seenValues.add(normalizedValue);
+        return true;
+      })
+      .slice(0, maxSearchSuggestions);
+  };
+
+  const displayNameSuggestions = getSuggestions("displayName");
+  const emailSuggestions = getSuggestions("email");
+  const showDisplayNameSuggestions =
+    activeSuggestionField === "displayName" &&
+    displayNameSuggestions.length > 0;
+  const showEmailSuggestions =
+    activeSuggestionField === "email" && emailSuggestions.length > 0;
+
   useEffect(() => {
     const abortController = new AbortController();
+
+    const loadSearchSourceUsers = async () => {
+      try {
+        const authSession = getStoredAuthSession();
+        if (!authSession?.userId) {
+          setSearchSourceUsers([]);
+          return;
+        }
+
+        const response = await fetch(`${authApiBaseUrl}/api/users`, {
+          signal: abortController.signal,
+          headers: {
+            "X-Auth-User-Id": authSession.userId,
+          },
+        });
+        const rawResponse = await response.text();
+        const payload = parseResponsePayload<
+          UserTableApiItem[] | { message?: string }
+        >(rawResponse);
+
+        if (!response.ok || !Array.isArray(payload)) {
+          setSearchSourceUsers([]);
+          return;
+        }
+
+        setSearchSourceUsers(payload.map(normalizeUser));
+      } catch (fetchError) {
+        if (
+          fetchError instanceof DOMException &&
+          fetchError.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setSearchSourceUsers([]);
+      }
+    };
+
+    void loadSearchSourceUsers();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [refreshVersion]);
+
+  useEffect(() => {
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      void loadUsers();
+    }, 250);
 
     const loadUsers = async () => {
       try {
@@ -190,7 +320,22 @@ export default function BasicTableOne() {
           return;
         }
 
-        const response = await fetch(`${authApiBaseUrl}/api/users`, {
+        const searchParams = new URLSearchParams();
+        if (filters.displayName.trim()) {
+          searchParams.set("displayName", filters.displayName.trim());
+        }
+        if (filters.email.trim()) {
+          searchParams.set("email", filters.email.trim());
+        }
+        if (filters.role) {
+          searchParams.set("role", filters.role);
+        }
+
+        const requestUrl = searchParams.toString()
+          ? `${authApiBaseUrl}/api/users?${searchParams.toString()}`
+          : `${authApiBaseUrl}/api/users`;
+
+        const response = await fetch(requestUrl, {
           signal: abortController.signal,
           headers: {
             "X-Auth-User-Id": authSession.userId,
@@ -230,12 +375,11 @@ export default function BasicTableOne() {
       }
     };
 
-    void loadUsers();
-
     return () => {
+      window.clearTimeout(timeoutId);
       abortController.abort();
     };
-  }, []);
+  }, [filters.displayName, filters.email, filters.role, refreshVersion]);
 
   const handleAssignRole = async () => {
     if (!selectedUser) {
@@ -292,12 +436,6 @@ export default function BasicTableOne() {
 
       const updatedUser = normalizeUser(payload);
 
-      setUsers((currentUsers) =>
-        currentUsers.map((user) =>
-          user.id === updatedUser.id ? updatedUser : user
-        )
-      );
-
       if (authSession.userId === updatedUser.id) {
         replaceStoredAuthSession({
           ...authSession,
@@ -311,6 +449,7 @@ export default function BasicTableOne() {
         }
       }
 
+      setRefreshVersion((currentValue) => currentValue + 1);
       resetRoleModal();
     } catch {
       setRoleError("Cannot reach the server to update the role.");
@@ -321,6 +460,146 @@ export default function BasicTableOne() {
   return (
     <>
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        <div className="border-b border-gray-100 px-5 py-5 dark:border-white/[0.05] sm:px-6">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px_auto]">
+            <div>
+              <Label htmlFor="user-filter" className="mb-2">
+                User
+              </Label>
+              <div className="relative">
+                <Input
+                  id="user-filter"
+                  name="user-filter"
+                  value={filters.displayName}
+                  onChange={(event) =>
+                    handleFilterChange("displayName", event.target.value)
+                  }
+                  onFocus={() => setActiveSuggestionField("displayName")}
+                  onBlur={() => setActiveSuggestionField(null)}
+                  autoComplete="off"
+                  placeholder="Search by display name"
+                />
+                {showDisplayNameSuggestions ? (
+                  <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                    {displayNameSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/[0.04]"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          handleSuggestionSelect("displayName", suggestion);
+                        }}
+                      >
+                        <span>{suggestion}</span>
+                        <span className="text-xs text-gray-400">
+                          Display name
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="email-filter" className="mb-2">
+                Email
+              </Label>
+              <div className="relative">
+                <Input
+                  type="email"
+                  id="email-filter"
+                  name="email-filter"
+                  value={filters.email}
+                  onChange={(event) =>
+                    handleFilterChange("email", event.target.value)
+                  }
+                  onFocus={() => setActiveSuggestionField("email")}
+                  onBlur={() => setActiveSuggestionField(null)}
+                  autoComplete="off"
+                  placeholder="Search by email"
+                />
+                {showEmailSuggestions ? (
+                  <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                    {emailSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/[0.04]"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          handleSuggestionSelect("email", suggestion);
+                        }}
+                      >
+                        <span className="truncate">{suggestion}</span>
+                        <span className="ml-3 shrink-0 text-xs text-gray-400">
+                          Email
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="role-filter" className="mb-2">
+                Role
+              </Label>
+              <div className="relative">
+                <select
+                  id="role-filter"
+                  name="role-filter"
+                  value={filters.role}
+                  onChange={(event) =>
+                    handleFilterChange(
+                      "role",
+                      event.target.value as UserFilters["role"]
+                    )
+                  }
+                  className="h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pr-11 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+                >
+                  <option
+                    value=""
+                    className="text-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                  >
+                    All roles
+                  </option>
+                  {availableRoles.map((roleOption) => (
+                    <option
+                      key={roleOption}
+                      value={roleOption}
+                      className="text-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                    >
+                      {roleOption}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <ChevronDownIcon className="h-4 w-4" />
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full xl:w-auto"
+                onClick={() => setFilters(initialFilters)}
+                disabled={!hasActiveFilters}
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            Results update automatically as you type or select a role.
+          </p>
+        </div>
+
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[980px]">
             <Table>
