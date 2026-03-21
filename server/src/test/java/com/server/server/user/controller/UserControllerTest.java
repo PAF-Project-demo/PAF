@@ -3,18 +3,22 @@ package com.server.server.user.controller;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.server.server.auth.entity.UserRole;
 import com.server.server.user.dto.UserTableItemResponse;
+import com.server.server.user.exception.UserNotFoundException;
 import com.server.server.user.service.UserAccessService;
+import com.server.server.user.service.UserManagementService;
 import com.server.server.user.service.UserQueryService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -26,6 +30,9 @@ class UserControllerTest {
 
     @MockitoBean
     private UserAccessService userAccessService;
+
+    @MockitoBean
+    private UserManagementService userManagementService;
 
     @MockitoBean
     private UserQueryService userQueryService;
@@ -66,5 +73,47 @@ class UserControllerTest {
         mockMvc.perform(get("/api/users").header("X-Auth-User-Id", "user-1"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("Only admins can access this resource."));
+    }
+
+    @Test
+    void updateUserRoleReturnsUpdatedRole() throws Exception {
+        given(userManagementService.updateUserRole("user-2", UserRole.MANAGER)).willReturn(
+                new UserTableItemResponse(
+                        "user-2",
+                        "manager@example.com",
+                        "Manager User",
+                        null,
+                        "LOCAL",
+                        UserRole.MANAGER,
+                        LocalDateTime.of(2026, 3, 21, 10, 26, 59)));
+
+        mockMvc.perform(patch("/api/users/user-2/role")
+                        .header("X-Auth-User-Id", "admin-user")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "role": "MANAGER"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("manager@example.com"))
+                .andExpect(jsonPath("$.role").value("MANAGER"));
+    }
+
+    @Test
+    void updateUserRoleReturnsNotFoundForMissingUser() throws Exception {
+        given(userManagementService.updateUserRole("missing-user", UserRole.TECHNICIAN))
+                .willThrow(new UserNotFoundException("User not found."));
+
+        mockMvc.perform(patch("/api/users/missing-user/role")
+                        .header("X-Auth-User-Id", "admin-user")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "role": "TECHNICIAN"
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("User not found."));
     }
 }

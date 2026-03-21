@@ -51,6 +51,16 @@ const getAuthStorages = () => {
   return [window.localStorage, window.sessionStorage];
 };
 
+const getStorageContainingAuthSession = () => {
+  for (const storage of getAuthStorages()) {
+    if (storage.getItem(AUTH_STORAGE_KEY)) {
+      return storage;
+    }
+  }
+
+  return null;
+};
+
 const emitAuthChange = () => {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
@@ -107,6 +117,22 @@ export const clearAuthSession = () => {
     storage.removeItem(AUTH_STORAGE_KEY);
   }
 
+  emitAuthChange();
+};
+
+export const replaceStoredAuthSession = (session: AuthSession) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const selectedStorage =
+    getStorageContainingAuthSession() ?? window.sessionStorage;
+
+  for (const storage of getAuthStorages()) {
+    storage.removeItem(AUTH_STORAGE_KEY);
+  }
+
+  selectedStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
   emitAuthChange();
 };
 
