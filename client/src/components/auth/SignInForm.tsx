@@ -1,14 +1,137 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { FormEvent, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
+import {
+  authApiBaseUrl,
+  parseResponsePayload,
+  persistAuthSession,
+  type AuthApiResponse,
+} from "../../lib/auth";
+
+type FormData = {
+  email: string;
+  password: string;
+};
+
+type FormErrors = {
+  email?: string;
+  password?: string;
+};
+
+const initialFormData: FormData = {
+  email: "",
+  password: "",
+};
 
 export default function SignInForm() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
+  const [serverError, setServerError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validateForm = () => {
+    const nextErrors: FormErrors = {};
+
+    if (!formData.email.trim()) {
+      nextErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      nextErrors.email = "Enter a valid email address";
+    }
+
+    if (!formData.password) {
+      nextErrors.password = "Password is required";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleChange = (field: keyof FormData, value: string) => {
+    setFormData((current) => ({
+      ...current,
+      [field]: value,
+    }));
+
+    setErrors((current) => ({
+      ...current,
+      [field]: undefined,
+    }));
+    setServerError("");
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setServerError("");
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`${authApiBaseUrl}/api/auth/signin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password,
+        }),
+      });
+
+      const rawResponse = await response.text();
+      const payload = parseResponsePayload<
+        Partial<AuthApiResponse> & { message?: string }
+      >(rawResponse);
+
+      if (!response.ok) {
+        const message =
+          typeof payload?.message === "string"
+            ? payload.message
+            : "Unable to sign in right now.";
+        setServerError(message);
+        return;
+      }
+
+      if (
+        typeof payload?.userId !== "string" ||
+        typeof payload?.email !== "string"
+      ) {
+        setServerError("The server response was missing account details.");
+        return;
+      }
+
+      persistAuthSession(
+        {
+          userId: payload.userId,
+          email: payload.email,
+        },
+        isChecked
+      );
+
+      setFormData(initialFormData);
+      setErrors({});
+      setShowPassword(false);
+      navigate("/", { replace: true });
+    } catch {
+      setServerError("Cannot reach the server. Make sure Spring Boot is running.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const socialButtonClassName =
+    "inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10";
+
   return (
     <div className="flex flex-col flex-1">
       <div className="w-full max-w-md pt-10 mx-auto">
@@ -32,7 +155,12 @@ export default function SignInForm() {
           </div>
           <div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
-              <button className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10">
+              <button
+                type="button"
+                disabled
+                title="Google sign-in is not configured yet."
+                className={socialButtonClassName}
+              >
                 <svg
                   width="20"
                   height="20"
@@ -59,7 +187,12 @@ export default function SignInForm() {
                 </svg>
                 Sign in with Google
               </button>
-              <button className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10">
+              <button
+                type="button"
+                disabled
+                title="X sign-in is not configured yet."
+                className={socialButtonClassName}
+              >
                 <svg
                   width="21"
                   className="fill-current"
@@ -73,6 +206,10 @@ export default function SignInForm() {
                 Sign in with X
               </button>
             </div>
+            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              Google and X sign-in are not configured yet. Use your email and
+              password below.
+            </p>
             <div className="relative py-3 sm:py-5">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
@@ -83,22 +220,39 @@ export default function SignInForm() {
                 </span>
               </div>
             </div>
-            <form>
+            <form onSubmit={handleSubmit}>
               <div className="space-y-6">
                 <div>
-                  <Label>
-                    Email <span className="text-error-500">*</span>{" "}
+                  <Label htmlFor="email">
+                    Email <span className="text-error-500">*</span>
                   </Label>
-                  <Input placeholder="info@gmail.com" />
+                  <Input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={(event) => handleChange("email", event.target.value)}
+                    placeholder="Enter your email"
+                    error={Boolean(errors.email)}
+                    hint={errors.email}
+                  />
                 </div>
                 <div>
-                  <Label>
-                    Password <span className="text-error-500">*</span>{" "}
+                  <Label htmlFor="password">
+                    Password <span className="text-error-500">*</span>
                   </Label>
                   <div className="relative">
                     <Input
                       type={showPassword ? "text" : "password"}
+                      id="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={(event) =>
+                        handleChange("password", event.target.value)
+                      }
                       placeholder="Enter your password"
+                      error={Boolean(errors.password)}
+                      hint={errors.password}
                     />
                     <span
                       onClick={() => setShowPassword(!showPassword)}
@@ -112,6 +266,11 @@ export default function SignInForm() {
                     </span>
                   </div>
                 </div>
+                {serverError ? (
+                  <div className="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">
+                    {serverError}
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Checkbox checked={isChecked} onChange={setIsChecked} />
@@ -127,8 +286,8 @@ export default function SignInForm() {
                   </Link>
                 </div>
                 <div>
-                  <Button className="w-full" size="sm">
-                    Sign in
+                  <Button className="w-full" size="sm" disabled={isSubmitting}>
+                    {isSubmitting ? "Signing in..." : "Sign in"}
                   </Button>
                 </div>
               </div>

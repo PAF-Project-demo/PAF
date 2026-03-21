@@ -1,6 +1,7 @@
 package com.server.server.auth.controller;
 
 import com.server.server.auth.dto.AuthResponse;
+import com.server.server.auth.dto.SignInRequest;
 import com.server.server.auth.dto.SignUpRequest;
 import com.server.server.auth.service.AuthService;
 import jakarta.validation.Valid;
@@ -25,5 +26,11 @@ public class AuthController {
     public ResponseEntity<AuthResponse> signUp(@Valid @RequestBody SignUpRequest request) {
         AuthResponse response = authService.signUp(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/signin")
+    public ResponseEntity<AuthResponse> signIn(@Valid @RequestBody SignInRequest request) {
+        AuthResponse response = authService.signIn(request);
+        return ResponseEntity.ok(response);
     }
 }

@@ -1,14 +1,16 @@
 package com.server.server.auth.service;
 
 import com.server.server.auth.dto.AuthResponse;
+import com.server.server.auth.dto.SignInRequest;
 import com.server.server.auth.dto.SignUpRequest;
 import com.server.server.auth.entity.User;
 import com.server.server.auth.exception.DuplicateEmailException;
+import com.server.server.auth.exception.InvalidCredentialsException;
 import com.server.server.auth.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.Locale;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -41,5 +43,18 @@ public class AuthService {
         } catch (DuplicateKeyException exception) {
             throw new DuplicateEmailException("An account with this email already exists");
         }
+    }
+
+    public AuthResponse signIn(SignInRequest request) {
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
+
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException("Invalid email or password");
+        }
+
+        return new AuthResponse(user.getId(), user.getEmail(), "Signed in successfully.");
     }
 }
