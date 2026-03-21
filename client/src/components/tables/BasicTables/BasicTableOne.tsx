@@ -14,6 +14,7 @@ import { Modal } from "../../ui/modal";
 import { useModal } from "../../../hooks/useModal";
 import Label from "../../form/Label";
 import Input from "../../form/input/InputField";
+import LoadingIndicator from "../../common/LoadingIndicator";
 import {
   authApiBaseUrl,
   getStoredAuthSession,
@@ -255,6 +256,9 @@ export default function BasicTableOne() {
     displayNameSuggestions.length > 0;
   const showEmailSuggestions =
     activeSuggestionField === "email" && emailSuggestions.length > 0;
+  const loadingUsersLabel = hasActiveFilters
+    ? "Filtering signed-in users"
+    : "Loading signed-in users";
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -648,9 +652,15 @@ export default function BasicTableOne() {
                   <TableRow>
                     <TableCell
                       colSpan={tableColumnCount}
-                      className="px-5 py-6 text-center text-theme-sm text-gray-500 dark:text-gray-400"
+                      className="px-5 py-10"
                     >
-                      Loading users...
+                      <LoadingIndicator
+                        layout="stacked"
+                        size="md"
+                        label={loadingUsersLabel}
+                        description="Please wait while the latest user accounts are loaded."
+                        className="mx-auto"
+                      />
                     </TableCell>
                   </TableRow>
                 ) : null}
@@ -847,8 +857,13 @@ export default function BasicTableOne() {
               size="sm"
               onClick={handleAssignRole}
               disabled={isUpdatingRole}
+              startIcon={
+                isUpdatingRole ? (
+                  <LoadingIndicator size="sm" tone="inverse" />
+                ) : undefined
+              }
             >
-              {isUpdatingRole ? "Saving..." : "Assign Role"}
+              {isUpdatingRole ? "Saving role" : "Assign Role"}
             </Button>
           </div>
         </div>
