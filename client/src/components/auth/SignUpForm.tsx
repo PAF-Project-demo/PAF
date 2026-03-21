@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
+import { authApiBaseUrl, parseResponsePayload } from "../../lib/auth";
 
 type FormData = {
   email: string;
@@ -17,20 +18,6 @@ type FormErrors = {
 const initialFormData: FormData = {
   email: "",
   password: "",
-};
-
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8081").replace(/\/$/, "");
-
-const parseResponsePayload = (rawResponse: string) => {
-  if (!rawResponse) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(rawResponse);
-  } catch {
-    return null;
-  }
 };
 
 export default function SignUpForm() {
@@ -86,7 +73,7 @@ export default function SignUpForm() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/auth/signup`, {
+      const response = await fetch(`${authApiBaseUrl}/api/auth/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -98,7 +85,7 @@ export default function SignUpForm() {
       });
 
       const rawResponse = await response.text();
-      const payload = parseResponsePayload(rawResponse);
+      const payload = parseResponsePayload<{ message?: string }>(rawResponse);
 
       if (!response.ok) {
         const message =
