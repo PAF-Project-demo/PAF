@@ -48,9 +48,13 @@ const navItems: NavItem[] = [
     subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
   },
   {
-    name: "Tables",
+    name: "Role Management",
     icon: <TableIcon />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
+    subItems: [
+      { name: "Role Requests", path: "/role-requests", pro: false },
+      { name: "Approval Requests", path: "/approval-requests", pro: false },
+      { name: "Signed-In Users", path: "/signed-in-users", pro: false },
+    ],
   },
   {
     name: "Pages",
@@ -97,7 +101,7 @@ const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
   const authSession = getStoredAuthSession();
-  const canAccessUsers = isAdminRole(authSession?.role);
+  const isAdmin = isAdminRole(authSession?.role);
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -172,7 +176,9 @@ const AppSidebar: React.FC = () => {
       return {
         ...nav,
         subItems: nav.subItems.filter(
-          (subItem) => subItem.path !== "/basic-tables" || canAccessUsers
+          (subItem) =>
+            !["/approval-requests", "/signed-in-users"].includes(subItem.path) ||
+            isAdmin
         ),
       };
     })

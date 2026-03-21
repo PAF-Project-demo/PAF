@@ -13,6 +13,8 @@ import LineChart from "./pages/Charts/LineChart";
 import BarChart from "./pages/Charts/BarChart";
 import Calendar from "./pages/Calendar";
 import BasicTables from "./pages/Tables/BasicTables";
+import ApprovalRequests from "./pages/Tables/ApprovalRequests";
+import SignedInUsers from "./pages/Tables/SignedInUsers";
 import FormElements from "./pages/Forms/FormElements";
 import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
@@ -44,8 +46,13 @@ export default function App() {
               <Route path="/form-elements" element={<FormElements />} />
 
               {/* Tables */}
+              <Route path="/role-requests" element={<BasicTables />} />
               <Route element={<RequireAdmin />}>
-                <Route path="/basic-tables" element={<BasicTables />} />
+                <Route
+                  path="/approval-requests"
+                  element={<ApprovalRequests />}
+                />
+                <Route path="/signed-in-users" element={<SignedInUsers />} />
               </Route>
 
               {/* Ui Elements */}

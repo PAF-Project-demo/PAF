@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
 import {
   Table,
   TableBody,
@@ -25,8 +24,15 @@ import {
   parseResponsePayload,
   replaceStoredAuthSession,
 } from "../../../lib/auth";
-
-type UserRoleValue = "USER" | "TECHNICIAN" | "MANAGER" | "ADMIN";
+import {
+  availableRoles,
+  formatTimestamp,
+  getRoleBadgeColor,
+  getUserInitials,
+  normalizeRole,
+  roleDescriptions,
+  type UserRoleValue,
+} from "../../../lib/userRoles";
 
 type UserTableApiItem = {
   id: string;
@@ -53,20 +59,6 @@ type UserTableItem = {
   createdAt: string | null;
 };
 
-const availableRoles: UserRoleValue[] = [
-  "USER",
-  "TECHNICIAN",
-  "MANAGER",
-  "ADMIN",
-];
-
-const roleDescriptions: Record<UserRoleValue, string> = {
-  USER: "Default application access for signed-in users.",
-  TECHNICIAN: "Operational access for technical and support work.",
-  MANAGER: "Management access for coordination and oversight.",
-  ADMIN: "Full administrative access to protected features.",
-};
-
 type UserFilters = {
   displayName: string;
   email: string;
@@ -81,15 +73,6 @@ const initialFilters: UserFilters = {
 
 const tableColumnCount = 6;
 const maxSearchSuggestions = 6;
-
-const normalizeRole = (role?: string | null): UserRoleValue => {
-  const normalizedRole =
-    typeof role === "string" ? role.trim().toUpperCase() : "";
-
-  return availableRoles.includes(normalizedRole as UserRoleValue)
-    ? (normalizedRole as UserRoleValue)
-    : "USER";
-};
 
 const normalizeUser = (user: UserTableApiItem): UserTableItem => ({
   id: user.id,
@@ -109,51 +92,6 @@ const normalizeUser = (user: UserTableApiItem): UserTableItem => ({
   role: normalizeRole(user.role),
   createdAt: user.createdAt ?? null,
 });
-
-const formatJoinedDate = (createdAt?: string | null) => {
-  if (!createdAt) {
-    return "Unavailable";
-  }
-
-  const parsedDate = new Date(createdAt);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return "Unavailable";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(parsedDate);
-};
-
-const getRoleBadgeColor = (role: UserRoleValue) => {
-  switch (role) {
-    case "ADMIN":
-      return "dark" as const;
-    case "MANAGER":
-      return "warning" as const;
-    case "TECHNICIAN":
-      return "success" as const;
-    case "USER":
-      return "primary" as const;
-    default:
-      return "info" as const;
-  }
-};
-
-const getUserInitials = (displayName: string, email: string) => {
-  const source = displayName.trim() || email.trim();
-  const words = source.split(/[\s@._-]+/).filter(Boolean);
-
-  if (words.length === 0) {
-    return "U";
-  }
-
-  return words
-    .slice(0, 2)
-    .map((word) => word.charAt(0).toUpperCase())
-    .join("");
-};
 
 const isUserTableApiItem = (value: unknown): value is UserTableApiItem => {
   return Boolean(
@@ -178,7 +116,6 @@ const isUserRoleUpdateApiResponse = (
 };
 
 export default function BasicTableOne() {
-  const navigate = useNavigate();
   const { isOpen, openModal, closeModal } = useModal();
   const { showNotification } = useNotification();
   const [users, setUsers] = useState<UserTableItem[]>([]);
@@ -494,7 +431,6 @@ export default function BasicTableOne() {
             title: "Admin access removed",
             message: responseMessage,
           });
-          navigate("/", { replace: true });
           return;
         }
       }
@@ -793,7 +729,7 @@ export default function BasicTableOne() {
                         </Badge>
                       </TableCell>
                       <TableCell className="px-5 py-4 text-theme-sm text-gray-500 dark:text-gray-400">
-                        {formatJoinedDate(user.createdAt)}
+                        {formatTimestamp(user.createdAt)}
                       </TableCell>
                       <TableCell className="px-5 py-4 text-start">
                         <Button
