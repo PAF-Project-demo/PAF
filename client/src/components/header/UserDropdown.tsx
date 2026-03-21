@@ -36,8 +36,9 @@ export default function UserDropdown() {
   }
 
   const displayName = authSession
-    ? getUserDisplayName(authSession.email)
+    ? authSession.displayName?.trim() || getUserDisplayName(authSession.email)
     : "Guest User";
+  const photoUrl = authSession?.photoUrl?.trim() || "/images/user/owner.jpg";
 
   return (
     <div className="relative">
@@ -46,7 +47,7 @@ export default function UserDropdown() {
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
         <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          <img src="/images/user/owner.jpg" alt="User" />
+          <img src={photoUrl} alt="User" className="h-full w-full object-cover" />
         </span>
 
         <span className="block mr-1 font-medium text-theme-sm">

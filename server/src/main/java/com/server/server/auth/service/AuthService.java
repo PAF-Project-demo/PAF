@@ -1,9 +1,12 @@
 package com.server.server.auth.service;
 
 import com.server.server.auth.dto.AuthResponse;
+import com.server.server.auth.dto.GoogleSignInRequest;
 import com.server.server.auth.dto.SignInRequest;
 import com.server.server.auth.dto.SignUpRequest;
 import com.server.server.auth.entity.User;
+import com.server.server.auth.google.GoogleIdentityVerifier;
+import com.server.server.auth.google.GoogleUserProfile;
 import com.server.server.auth.exception.DuplicateEmailException;
 import com.server.server.auth.exception.InvalidCredentialsException;
 import com.server.server.auth.repository.UserRepository;
@@ -18,10 +21,15 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final GoogleIdentityVerifier googleIdentityVerifier;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            GoogleIdentityVerifier googleIdentityVerifier) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.googleIdentityVerifier = googleIdentityVerifier;
     }
 
     public AuthResponse signUp(SignUpRequest request) {
@@ -39,7 +47,7 @@ public class AuthService {
         try {
             User savedUser = userRepository.save(user);
 
-            return new AuthResponse(savedUser.getId(), savedUser.getEmail(), "Account created successfully.");
+            return buildAuthResponse(savedUser, "Account created successfully.", "LOCAL");
         } catch (DuplicateKeyException exception) {
             throw new DuplicateEmailException("An account with this email already exists");
         }
@@ -51,10 +59,70 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
+        if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            throw new InvalidCredentialsException("This account uses Google sign-in. Continue with Google.");
+        }
+
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException("Invalid email or password");
         }
 
-        return new AuthResponse(user.getId(), user.getEmail(), "Signed in successfully.");
+        return buildAuthResponse(user, "Signed in successfully.", "LOCAL");
+    }
+
+    public AuthResponse signInWithGoogle(GoogleSignInRequest request) {
+        GoogleUserProfile googleUserProfile = googleIdentityVerifier.verify(request.credential());
+
+        if (!googleUserProfile.emailVerified()) {
+            throw new InvalidCredentialsException("Your Google account email is not verified.");
+        }
+
+        User user = userRepository.findByGoogleSubject(googleUserProfile.subject())
+                .orElseGet(() -> userRepository.findByEmail(googleUserProfile.email())
+                        .map(existingUser -> {
+                            if (existingUser.getGoogleSubject() == null || existingUser.getGoogleSubject().isBlank()) {
+                                if (existingUser.getPasswordHash() != null && !existingUser.getPasswordHash().isBlank()) {
+                                    throw new InvalidCredentialsException(
+                                            "This email already belongs to a password account. Sign in with email and password.");
+                                }
+                            }
+
+                            return existingUser;
+                        })
+                        .orElseGet(User::new));
+
+        boolean isNewUser = user.getId() == null;
+
+        if (user.getGoogleSubject() == null || user.getGoogleSubject().isBlank()) {
+            user.setGoogleSubject(googleUserProfile.subject());
+        }
+
+        user.setEmail(googleUserProfile.email());
+        user.setDisplayName(googleUserProfile.displayName());
+        user.setPhotoUrl(googleUserProfile.pictureUrl());
+
+        if (isNewUser) {
+            user.setCreatedAt(LocalDateTime.now());
+        }
+
+        try {
+            User savedUser = userRepository.save(user);
+            String message = isNewUser
+                    ? "Google account connected successfully."
+                    : "Signed in with Google successfully.";
+            return buildAuthResponse(savedUser, message, "GOOGLE");
+        } catch (DuplicateKeyException exception) {
+            throw new DuplicateEmailException("An account with this email already exists");
+        }
+    }
+
+    private AuthResponse buildAuthResponse(User user, String message, String provider) {
+        return new AuthResponse(
+                user.getId(),
+                user.getEmail(),
+                message,
+                user.getDisplayName(),
+                user.getPhotoUrl(),
+                provider);
     }
 }

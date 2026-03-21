@@ -3,6 +3,7 @@ package com.server.server;
 import com.server.server.auth.controller.AuthController;
 import com.server.server.auth.dto.AuthResponse;
 import com.server.server.auth.exception.DuplicateEmailException;
+import com.server.server.auth.exception.InvalidCredentialsException;
 import com.server.server.auth.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -29,6 +31,13 @@ class ServerApplicationTests {
 
     @Test
     void contextLoads() {
+    }
+
+    @Test
+    void authConfigReturnsGoogleDisabledWhenClientIdIsMissing() throws Exception {
+        mockMvc.perform(get("/api/auth/config"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.googleSignInEnabled").value(false));
     }
 
     @Test
@@ -81,5 +90,44 @@ class ServerApplicationTests {
                                 """))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.message").value("MongoDB connection is unavailable. Check MONGODB_URI or MONGODB_PASSWORD."));
+    }
+
+    @Test
+    void googleSigninReturnsAuthenticatedUser() throws Exception {
+        given(authService.signInWithGoogle(any()))
+                .willReturn(new AuthResponse(
+                        "507f1f77bcf86cd799439011",
+                        "google@example.com",
+                        "Signed in with Google successfully.",
+                        "Google User",
+                        "https://example.com/photo.png",
+                        "GOOGLE"));
+
+        mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "credential": "google-id-token"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("google@example.com"))
+                .andExpect(jsonPath("$.provider").value("GOOGLE"));
+    }
+
+    @Test
+    void googleSigninRejectsInvalidCredential() throws Exception {
+        given(authService.signInWithGoogle(any()))
+                .willThrow(new InvalidCredentialsException("Google sign-in could not be verified."));
+
+        mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "credential": "invalid-token"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Google sign-in could not be verified."));
     }
 }

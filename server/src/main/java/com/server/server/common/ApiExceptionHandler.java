@@ -1,5 +1,6 @@
 package com.server.server.common;
 
+import com.server.server.auth.exception.AuthConfigurationException;
 import com.server.server.auth.exception.DuplicateEmailException;
 import com.server.server.auth.exception.InvalidCredentialsException;
 import org.springframework.dao.DataAccessException;
@@ -21,6 +22,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler(AuthConfigurationException.class)
+    public ResponseEntity<ApiError> handleAuthConfiguration(AuthConfigurationException exception) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ApiError(exception.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
