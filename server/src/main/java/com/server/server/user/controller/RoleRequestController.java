@@ -1,6 +1,7 @@
 package com.server.server.user.controller;
 
 import com.server.server.user.dto.CreateRoleRequestRequest;
+import com.server.server.user.dto.RejectRoleRequestRequest;
 import com.server.server.user.dto.RoleRequestDeleteResponse;
 import com.server.server.user.dto.RoleRequestItemResponse;
 import com.server.server.user.dto.RoleRequestMutationResponse;
@@ -69,6 +70,18 @@ public class RoleRequestController {
             @PathVariable String requestId) {
         userAccessService.assertAdminAccess(userId);
         return ResponseEntity.ok(roleRequestService.approveRoleRequest(userId, requestId));
+    }
+
+    @PatchMapping("/{requestId}/reject")
+    public ResponseEntity<RoleRequestMutationResponse> rejectRoleRequest(
+            @RequestHeader(value = "X-Auth-User-Id", required = false) String userId,
+            @PathVariable String requestId,
+            @Valid @RequestBody RejectRoleRequestRequest request) {
+        userAccessService.assertAdminAccess(userId);
+        return ResponseEntity.ok(roleRequestService.rejectRoleRequest(
+                userId,
+                requestId,
+                request.rejectionReason()));
     }
 
     @PatchMapping("/{requestId}")
