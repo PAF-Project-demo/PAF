@@ -3,6 +3,7 @@ package com.server.server.user.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,6 +36,9 @@ class RoleRequestServiceTest {
     @Mock
     private UserAccessService userAccessService;
 
+    @Mock
+    private RoleRequestRealtimeService roleRequestRealtimeService;
+
     @Test
     void createRoleRequestStoresPendingRequest() {
         User requester = new User();
@@ -56,7 +60,8 @@ class RoleRequestServiceTest {
         RoleRequestService roleRequestService = new RoleRequestService(
                 roleRequestRepository,
                 userRepository,
-                userAccessService);
+                userAccessService,
+                roleRequestRealtimeService);
 
         RoleRequestMutationResponse response = roleRequestService.createRoleRequest(
                 "user-1",
@@ -70,6 +75,10 @@ class RoleRequestServiceTest {
         assertEquals(RoleRequestStatus.PENDING, response.request().status());
         assertEquals("User One", response.request().requesterDisplayName());
         verify(roleRequestRepository).save(any(RoleRequest.class));
+        verify(roleRequestRealtimeService).publishRequestCreated(
+                eq("user-1"),
+                any(),
+                eq(response.message()));
     }
 
     @Test
@@ -86,7 +95,8 @@ class RoleRequestServiceTest {
         RoleRequestService roleRequestService = new RoleRequestService(
                 roleRequestRepository,
                 userRepository,
-                userAccessService);
+                userAccessService,
+                roleRequestRealtimeService);
 
         assertThrows(
                 InvalidRoleRequestException.class,
@@ -131,7 +141,8 @@ class RoleRequestServiceTest {
         RoleRequestService roleRequestService = new RoleRequestService(
                 roleRequestRepository,
                 userRepository,
-                userAccessService);
+                userAccessService,
+                roleRequestRealtimeService);
 
         RoleRequestMutationResponse response = roleRequestService.approveRoleRequest("admin-user", "request-1");
 
@@ -141,6 +152,11 @@ class RoleRequestServiceTest {
         assertEquals(RoleRequestStatus.APPROVED, response.request().status());
         verify(userRepository).save(requester);
         verify(roleRequestRepository).save(roleRequest);
+        verify(roleRequestRealtimeService).publishRequestApproved(
+                eq("admin-user"),
+                any(),
+                any(),
+                eq(response.message()));
     }
 
     @Test
@@ -169,7 +185,8 @@ class RoleRequestServiceTest {
         RoleRequestService roleRequestService = new RoleRequestService(
                 roleRequestRepository,
                 userRepository,
-                userAccessService);
+                userAccessService,
+                roleRequestRealtimeService);
 
         RoleRequestMutationResponse response = roleRequestService.rejectRoleRequest(
                 "admin-user",
@@ -180,6 +197,10 @@ class RoleRequestServiceTest {
         assertEquals(RoleRequestStatus.REJECTED, response.request().status());
         assertEquals("Please explain why you need admin access.", response.request().rejectionReason());
         verify(roleRequestRepository).save(roleRequest);
+        verify(roleRequestRealtimeService).publishRequestRejected(
+                eq("admin-user"),
+                any(),
+                eq(response.message()));
     }
 
     @Test
@@ -203,7 +224,8 @@ class RoleRequestServiceTest {
         RoleRequestService roleRequestService = new RoleRequestService(
                 roleRequestRepository,
                 userRepository,
-                userAccessService);
+                userAccessService,
+                roleRequestRealtimeService);
 
         RoleRequestMutationResponse response = roleRequestService.updateRoleRequest(
                 "user-1",
@@ -219,6 +241,10 @@ class RoleRequestServiceTest {
                 "user-1",
                 "You can only edit your own role requests.");
         verify(roleRequestRepository).save(roleRequest);
+        verify(roleRequestRealtimeService).publishRequestUpdated(
+                eq("user-1"),
+                any(),
+                eq(response.message()));
     }
 
     @Test
@@ -236,7 +262,8 @@ class RoleRequestServiceTest {
         RoleRequestService roleRequestService = new RoleRequestService(
                 roleRequestRepository,
                 userRepository,
-                userAccessService);
+                userAccessService,
+                roleRequestRealtimeService);
 
         assertThrows(
                 ForbiddenAccessException.class,
@@ -258,7 +285,8 @@ class RoleRequestServiceTest {
         RoleRequestService roleRequestService = new RoleRequestService(
                 roleRequestRepository,
                 userRepository,
-                userAccessService);
+                userAccessService,
+                roleRequestRealtimeService);
 
         RoleRequestDeleteResponse response = roleRequestService.deleteRoleRequest("user-1", "request-1");
 
@@ -269,6 +297,10 @@ class RoleRequestServiceTest {
                 "user-1",
                 "You can only delete your own role requests.");
         verify(roleRequestRepository).delete(roleRequest);
+        verify(roleRequestRealtimeService).publishRequestDeleted(
+                eq("user-1"),
+                any(),
+                eq(response.message()));
     }
 
     @Test
@@ -285,7 +317,8 @@ class RoleRequestServiceTest {
         RoleRequestService roleRequestService = new RoleRequestService(
                 roleRequestRepository,
                 userRepository,
-                userAccessService);
+                userAccessService,
+                roleRequestRealtimeService);
 
         assertThrows(
                 ForbiddenAccessException.class,

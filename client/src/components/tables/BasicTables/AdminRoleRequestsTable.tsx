@@ -29,15 +29,18 @@ import {
   isRoleRequestApiItem,
   isRoleRequestMutationApiResponse,
   normalizeRoleRequest,
+  sortAdminRoleRequests,
   type RoleRequestApiItem,
   type RoleRequestItem,
   type RoleRequestMutationApiResponse,
+  upsertRoleRequest,
 } from "../../../lib/roleRequests";
 import {
   formatTimestamp,
   getUserInitials,
   normalizeRole,
 } from "../../../lib/userRoles";
+import { useRoleRequestStream } from "../../../hooks/useRoleRequestStream";
 
 type AdminRoleRequestsTableProps = {
   refreshVersion: number;
@@ -69,6 +72,112 @@ export default function AdminRoleRequestsTable({
   );
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
+
+  useRoleRequestStream({
+    includeAdminEvents: true,
+    onEvent: (event) => {
+      const currentUserId = getStoredAuthSession()?.userId ?? null;
+      const requestId = event.request?.id ?? event.requestId;
+
+      if (!requestId) {
+        return;
+      }
+
+      if (event.eventType === "DELETED") {
+        setRequests((currentRequests) =>
+          currentRequests.filter((currentRequest) => currentRequest.id !== requestId)
+        );
+
+        if (requestToConfirm?.id === requestId) {
+          setRequestToConfirm(null);
+        }
+
+        if (requestToReject?.id === requestId) {
+          setRequestToReject(null);
+          setRejectionReason("");
+          setRejectionError("");
+        }
+
+        if (event.actorUserId && event.actorUserId !== currentUserId) {
+          showNotification({
+            variant: "info",
+            title: "Request deleted",
+            message:
+              event.message ||
+              "A role request was deleted and removed from the approval list.",
+          });
+        }
+
+        return;
+      }
+
+      const liveRequest = event.request;
+      if (!liveRequest) {
+        return;
+      }
+
+      setRequests((currentRequests) =>
+        upsertRoleRequest(currentRequests, liveRequest, sortAdminRoleRequests)
+      );
+
+      if (liveRequest.status !== "PENDING") {
+        if (requestToConfirm?.id === liveRequest.id) {
+          setRequestToConfirm(null);
+        }
+
+        if (requestToReject?.id === liveRequest.id) {
+          setRequestToReject(null);
+          setRejectionReason("");
+          setRejectionError("");
+        }
+      }
+
+      if (!event.actorUserId || event.actorUserId === currentUserId) {
+        return;
+      }
+
+      switch (event.eventType) {
+        case "CREATED":
+          showNotification({
+            variant: "info",
+            title: "New request received",
+            message:
+              event.message ||
+              `${liveRequest.requesterDisplayName} submitted a new role request.`,
+          });
+          break;
+        case "UPDATED":
+          showNotification({
+            variant: "info",
+            title: "Request updated",
+            message:
+              event.message ||
+              `${liveRequest.requesterDisplayName} updated a role request.`,
+          });
+          break;
+        case "APPROVED":
+          showNotification({
+            variant: "success",
+            title: "Request approved",
+            message:
+              event.message ||
+              `${liveRequest.requesterDisplayName}'s request was approved.`,
+          });
+          break;
+        case "REJECTED":
+          showNotification({
+            variant: "warning",
+            title: "Request rejected",
+            message:
+              event.message ||
+              `${liveRequest.requesterDisplayName}'s request was rejected.`,
+          });
+          break;
+        default:
+          break;
+      }
+    },
+  });
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -117,7 +226,7 @@ export default function AdminRoleRequestsTable({
           return;
         }
 
-        setRequests(payload.map(normalizeRoleRequest));
+        setRequests(sortAdminRoleRequests(payload.map(normalizeRoleRequest)));
       } catch (fetchError) {
         if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
           return;
@@ -240,9 +349,7 @@ export default function AdminRoleRequestsTable({
 
       const updatedRequest = normalizeRoleRequest(payload.request);
       setRequests((currentRequests) =>
-        currentRequests.map((currentRequest) =>
-          currentRequest.id === updatedRequest.id ? updatedRequest : currentRequest
-        )
+        upsertRoleRequest(currentRequests, updatedRequest, sortAdminRoleRequests)
       );
       setRequestToConfirm(null);
 
@@ -343,9 +450,7 @@ export default function AdminRoleRequestsTable({
 
       const updatedRequest = normalizeRoleRequest(payload.request);
       setRequests((currentRequests) =>
-        currentRequests.map((currentRequest) =>
-          currentRequest.id === updatedRequest.id ? updatedRequest : currentRequest
-        )
+        upsertRoleRequest(currentRequests, updatedRequest, sortAdminRoleRequests)
       );
       setRequestToReject(null);
       setRejectionReason("");
