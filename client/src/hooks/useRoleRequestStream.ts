@@ -36,13 +36,14 @@ export const useRoleRequestStream = ({
     }
 
     const streamUrl = new URL(`${authApiBaseUrl}/api/role-requests/stream`);
-    streamUrl.searchParams.set("userId", authSession.userId);
 
     if (includeAdminEvents) {
       streamUrl.searchParams.set("adminEvents", "true");
     }
 
-    const eventSource = new EventSource(streamUrl.toString());
+    const eventSource = new EventSource(streamUrl.toString(), {
+      withCredentials: true,
+    });
     const handleRoleRequestEvent = (streamEvent: MessageEvent<string>) => {
       const payload = parseResponsePayload<unknown>(streamEvent.data);
       if (!isRoleRequestRealtimeApiEvent(payload)) {

@@ -21,7 +21,7 @@ import {
   TrashBinIcon,
 } from "../../../icons";
 import {
-  authApiBaseUrl,
+  apiFetch,
   formatRoleLabel,
   getApiMessage,
   getStoredAuthSession,
@@ -213,11 +213,8 @@ export default function MyRoleRequestsTable({
           return;
         }
 
-        const response = await fetch(`${authApiBaseUrl}/api/role-requests/my`, {
+        const response = await apiFetch("/api/role-requests/my", {
           signal: abortController.signal,
-          headers: {
-            "X-Auth-User-Id": authSession.userId,
-          },
         });
 
         const rawResponse = await response.text();
@@ -350,15 +347,14 @@ export default function MyRoleRequestsTable({
     setSubmitError("");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         isEditingRequest
-          ? `${authApiBaseUrl}/api/role-requests/${requestToEdit?.id ?? ""}`
-          : `${authApiBaseUrl}/api/role-requests`,
+          ? `/api/role-requests/${requestToEdit?.id ?? ""}`
+          : "/api/role-requests",
         {
           method: isEditingRequest ? "PATCH" : "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Auth-User-Id": authSession.userId,
           },
           body: JSON.stringify({
             requestedRole: selectedRole,
@@ -454,15 +450,9 @@ export default function MyRoleRequestsTable({
     setDeletingRequestId(roleRequest.id);
 
     try {
-      const response = await fetch(
-        `${authApiBaseUrl}/api/role-requests/${roleRequest.id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "X-Auth-User-Id": authSession.userId,
-          },
-        }
-      );
+      const response = await apiFetch(`/api/role-requests/${roleRequest.id}`, {
+        method: "DELETE",
+      });
 
       const rawResponse = await response.text();
       const payload = parseResponsePayload<
