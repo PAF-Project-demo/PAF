@@ -12,6 +12,7 @@ type LinkedInSignInButtonProps = {
   disabled?: boolean;
   keepUserSignedIn?: boolean;
   onError: (message: string) => void;
+  source?: "signin" | "signup";
 };
 
 type AuthConfigResponse = {
@@ -24,6 +25,7 @@ export default function LinkedInSignInButton({
   disabled = false,
   keepUserSignedIn = false,
   onError,
+  source = "signin",
 }: LinkedInSignInButtonProps) {
   const onErrorRef = useRef(onError);
   const [isEnabled, setIsEnabled] = useState(false);
@@ -88,6 +90,7 @@ export default function LinkedInSignInButton({
 
     const authorizeUrl = new URL("/api/auth/linkedin/authorize", authApiBaseUrl);
     authorizeUrl.searchParams.set("remember", String(keepUserSignedIn));
+    authorizeUrl.searchParams.set("source", source);
     window.location.replace(authorizeUrl.toString());
   };
 

@@ -222,6 +222,20 @@ class ServerApplicationTests {
     }
 
     @Test
+    void linkedinCallbackRedirectsBackToSignupAfterFailureWhenStartedFromSignup() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("paf.linkedin.oauth.state", "expected-state");
+        session.setAttribute("paf.linkedin.oauth.source", "/signup");
+
+        mockMvc.perform(get("/api/auth/linkedin/callback")
+                        .session(session)
+                        .param("error", "user_cancelled_login"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl(
+                        "http://localhost:5173/signup?linkedinError=LinkedIn%20sign-in%20was%20cancelled."));
+    }
+
+    @Test
     void githubAuthorizeRedirectsToGitHub() throws Exception {
         given(gitHubOAuthClient.buildAuthorizationUrl(any()))
                 .willReturn("https://github.com/login/oauth/authorize?state=test-state");
@@ -263,5 +277,19 @@ class ServerApplicationTests {
                         "http://localhost:5173/?authStatus=success&authProvider=github&authMessage=Signed%20in%20with%20GitHub%20successfully."));
 
         verify(sessionAuthenticationService).signIn(any(), any(), any());
+    }
+
+    @Test
+    void githubCallbackRedirectsBackToSignupAfterFailureWhenStartedFromSignup() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("paf.github.oauth.state", "expected-state");
+        session.setAttribute("paf.github.oauth.source", "/signup");
+
+        mockMvc.perform(get("/api/auth/github/callback")
+                        .session(session)
+                        .param("error", "access_denied"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl(
+                        "http://localhost:5173/signup?githubError=GitHub%20sign-in%20was%20cancelled."));
     }
 }

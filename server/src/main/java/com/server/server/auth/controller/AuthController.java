@@ -46,10 +46,14 @@ public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private static final String LINKEDIN_STATE_ATTRIBUTE = "paf.linkedin.oauth.state";
     private static final String LINKEDIN_REMEMBER_ATTRIBUTE = "paf.linkedin.oauth.remember";
+    private static final String LINKEDIN_SOURCE_ATTRIBUTE = "paf.linkedin.oauth.source";
     private static final String GITHUB_STATE_ATTRIBUTE = "paf.github.oauth.state";
+    private static final String GITHUB_SOURCE_ATTRIBUTE = "paf.github.oauth.source";
     private static final String AUTH_STATUS_QUERY_PARAMETER = "authStatus";
     private static final String AUTH_PROVIDER_QUERY_PARAMETER = "authProvider";
     private static final String AUTH_MESSAGE_QUERY_PARAMETER = "authMessage";
+    private static final String SIGN_IN_PAGE_PATH = "/signin";
+    private static final String SIGN_UP_PAGE_PATH = "/signup";
 
     private final AuthService authService;
     private final SessionAuthenticationService sessionAuthenticationService;
@@ -98,11 +102,13 @@ public class AuthController {
     @GetMapping("/linkedin/authorize")
     public ResponseEntity<Void> authorizeLinkedIn(
             @RequestParam(name = "remember", defaultValue = "false") boolean rememberUser,
+            @RequestParam(name = "source", defaultValue = "signin") String source,
             HttpServletRequest httpRequest) {
         String state = UUID.randomUUID().toString();
         HttpSession session = httpRequest.getSession(true);
         session.setAttribute(LINKEDIN_STATE_ATTRIBUTE, state);
         session.setAttribute(LINKEDIN_REMEMBER_ATTRIBUTE, rememberUser);
+        session.setAttribute(LINKEDIN_SOURCE_ATTRIBUTE, normalizeClientAuthPath(source));
 
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(linkedInOAuthClient.buildAuthorizationUrl(state)))
@@ -121,13 +127,17 @@ public class AuthController {
         String expectedState = session != null
                 ? (String) session.getAttribute(LINKEDIN_STATE_ATTRIBUTE)
                 : null;
+        String clientAuthPath = session != null
+                ? (String) session.getAttribute(LINKEDIN_SOURCE_ATTRIBUTE)
+                : null;
         clearLinkedInState(session);
 
         if (error != null && !error.isBlank()) {
             redirectToLinkedInClient(
                     httpResponse,
                     false,
-                    resolveLinkedInErrorMessage(error, errorDescription));
+                    resolveLinkedInErrorMessage(error, errorDescription),
+                    clientAuthPath);
             return;
         }
 
@@ -135,7 +145,8 @@ public class AuthController {
             redirectToLinkedInClient(
                     httpResponse,
                     false,
-                    "LinkedIn sign-in could not be verified. Please try again.");
+                    "LinkedIn sign-in could not be verified. Please try again.",
+                    clientAuthPath);
             return;
         }
 
@@ -143,18 +154,21 @@ public class AuthController {
             LinkedInUserProfile linkedInUserProfile = linkedInOAuthClient.authenticate(authorizationCode);
             AuthResponse authResponse = authService.signInWithLinkedIn(linkedInUserProfile);
             sessionAuthenticationService.signIn(authResponse, httpRequest, httpResponse);
-            redirectToLinkedInClient(httpResponse, true, authResponse.message());
+            redirectToLinkedInClient(httpResponse, true, authResponse.message(), clientAuthPath);
         } catch (InvalidCredentialsException | DuplicateEmailException | AuthConfigurationException exception) {
             logger.warn("LinkedIn sign-in failed: {}", exception.getMessage());
-            redirectToLinkedInClient(httpResponse, false, exception.getMessage());
+            redirectToLinkedInClient(httpResponse, false, exception.getMessage(), clientAuthPath);
         }
     }
 
     @GetMapping("/github/authorize")
-    public ResponseEntity<Void> authorizeGitHub(HttpServletRequest httpRequest) {
+    public ResponseEntity<Void> authorizeGitHub(
+            @RequestParam(name = "source", defaultValue = "signin") String source,
+            HttpServletRequest httpRequest) {
         String state = UUID.randomUUID().toString();
         HttpSession session = httpRequest.getSession(true);
         session.setAttribute(GITHUB_STATE_ATTRIBUTE, state);
+        session.setAttribute(GITHUB_SOURCE_ATTRIBUTE, normalizeClientAuthPath(source));
 
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(gitHubOAuthClient.buildAuthorizationUrl(state)))
@@ -173,13 +187,17 @@ public class AuthController {
         String expectedState = session != null
                 ? (String) session.getAttribute(GITHUB_STATE_ATTRIBUTE)
                 : null;
+        String clientAuthPath = session != null
+                ? (String) session.getAttribute(GITHUB_SOURCE_ATTRIBUTE)
+                : null;
         clearGitHubState(session);
 
         if (error != null && !error.isBlank()) {
             redirectToGitHubClient(
                     httpResponse,
                     false,
-                    resolveGitHubErrorMessage(error, errorDescription));
+                    resolveGitHubErrorMessage(error, errorDescription),
+                    clientAuthPath);
             return;
         }
 
@@ -187,7 +205,8 @@ public class AuthController {
             redirectToGitHubClient(
                     httpResponse,
                     false,
-                    "GitHub sign-in could not be verified. Please try again.");
+                    "GitHub sign-in could not be verified. Please try again.",
+                    clientAuthPath);
             return;
         }
 
@@ -195,10 +214,10 @@ public class AuthController {
             GitHubUserProfile gitHubUserProfile = gitHubOAuthClient.authenticate(authorizationCode);
             AuthResponse authResponse = authService.signInWithGitHub(gitHubUserProfile);
             sessionAuthenticationService.signIn(authResponse, httpRequest, httpResponse);
-            redirectToGitHubClient(httpResponse, true, authResponse.message());
+            redirectToGitHubClient(httpResponse, true, authResponse.message(), clientAuthPath);
         } catch (InvalidCredentialsException | DuplicateEmailException | AuthConfigurationException exception) {
             logger.warn("GitHub sign-in failed: {}", exception.getMessage());
-            redirectToGitHubClient(httpResponse, false, exception.getMessage());
+            redirectToGitHubClient(httpResponse, false, exception.getMessage(), clientAuthPath);
         }
     }
 
@@ -252,6 +271,7 @@ public class AuthController {
 
         session.removeAttribute(LINKEDIN_STATE_ATTRIBUTE);
         session.removeAttribute(LINKEDIN_REMEMBER_ATTRIBUTE);
+        session.removeAttribute(LINKEDIN_SOURCE_ATTRIBUTE);
     }
 
     private void clearGitHubState(HttpSession session) {
@@ -260,15 +280,21 @@ public class AuthController {
         }
 
         session.removeAttribute(GITHUB_STATE_ATTRIBUTE);
+        session.removeAttribute(GITHUB_SOURCE_ATTRIBUTE);
     }
 
     private void redirectToLinkedInClient(
             HttpServletResponse httpResponse,
             boolean success,
-            String message) throws IOException {
+            String message,
+            String clientAuthPath) throws IOException {
         String redirectUri = success
                 ? buildClientSuccessRedirectUri(linkedInClientRedirectUri, "linkedin", message)
-                : buildClientErrorRedirectUri(linkedInClientRedirectUri, "linkedinError", message);
+                : buildClientErrorRedirectUri(
+                        linkedInClientRedirectUri,
+                        clientAuthPath,
+                        "linkedinError",
+                        message);
 
         httpResponse.sendRedirect(redirectUri);
     }
@@ -276,10 +302,15 @@ public class AuthController {
     private void redirectToGitHubClient(
             HttpServletResponse httpResponse,
             boolean success,
-            String message) throws IOException {
+            String message,
+            String clientAuthPath) throws IOException {
         String redirectUri = success
                 ? buildClientSuccessRedirectUri(gitHubClientRedirectUri, "github", message)
-                : buildClientErrorRedirectUri(gitHubClientRedirectUri, "githubError", message);
+                : buildClientErrorRedirectUri(
+                        gitHubClientRedirectUri,
+                        clientAuthPath,
+                        "githubError",
+                        message);
 
         httpResponse.sendRedirect(redirectUri);
     }
@@ -299,17 +330,32 @@ public class AuthController {
                 .toUriString();
     }
 
-    private String buildClientErrorRedirectUri(String clientRedirectUri, String errorQueryParameterName, String message) {
+    private String buildClientErrorRedirectUri(
+            String clientRedirectUri,
+            String clientAuthPath,
+            String errorQueryParameterName,
+            String message) {
         URI redirectUri = URI.create(clientRedirectUri);
 
         return UriComponentsBuilder.fromUri(redirectUri)
-                .replacePath("/signin")
+                .replacePath(normalizeClientAuthPath(clientAuthPath))
                 .replaceQuery(null)
                 .queryParam(errorQueryParameterName, message)
                 .fragment(null)
                 .build()
                 .encode()
                 .toUriString();
+    }
+
+    private String normalizeClientAuthPath(String source) {
+        if (source == null || source.isBlank()) {
+            return SIGN_IN_PAGE_PATH;
+        }
+
+        String normalizedSource = source.trim().toLowerCase();
+        return "signup".equals(normalizedSource) || SIGN_UP_PAGE_PATH.equals(normalizedSource)
+                ? SIGN_UP_PAGE_PATH
+                : SIGN_IN_PAGE_PATH;
     }
 
     private String resolveLinkedInErrorMessage(String error, String errorDescription) {

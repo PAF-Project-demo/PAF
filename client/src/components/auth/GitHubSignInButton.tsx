@@ -12,6 +12,7 @@ type GitHubSignInButtonProps = {
   disabled?: boolean;
   keepUserSignedIn?: boolean;
   onError: (message: string) => void;
+  source?: "signin" | "signup";
 };
 
 type AuthConfigResponse = {
@@ -24,6 +25,7 @@ export default function GitHubSignInButton({
   disabled = false,
   keepUserSignedIn = false,
   onError,
+  source = "signin",
 }: GitHubSignInButtonProps) {
   const onErrorRef = useRef(onError);
   const [isEnabled, setIsEnabled] = useState(false);
@@ -87,6 +89,7 @@ export default function GitHubSignInButton({
     setPendingAuthPersistencePreference(keepUserSignedIn);
 
     const authorizeUrl = new URL("/api/auth/github/authorize", authApiBaseUrl);
+    authorizeUrl.searchParams.set("source", source);
     window.location.replace(authorizeUrl.toString());
   };
 
