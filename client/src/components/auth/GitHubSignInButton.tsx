@@ -5,7 +5,8 @@ import {
   parseResponsePayload,
   setPendingAuthPersistencePreference,
 } from "../../lib/auth";
-import LoadingIndicator from "../common/LoadingIndicator";
+import SocialSignInButton from "./SocialSignInButton";
+import { GitHubBrandIcon } from "./SocialBrandIcons";
 
 type GitHubSignInButtonProps = {
   disabled?: boolean;
@@ -92,31 +93,14 @@ export default function GitHubSignInButton({
   const isLoadingStatus = statusMessage === loadingStatusMessage;
 
   return (
-    <div className="w-full">
-      <button
-        type="button"
-        onClick={handleGitHubSignIn}
-        disabled={disabled || !isEnabled || isRedirecting}
-        className={`flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-gray-900 bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed dark:border-white/10 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100 ${
-          disabled || !isEnabled || isRedirecting ? "opacity-60" : ""
-        }`}
-      >
-        <span className="flex size-6 items-center justify-center rounded bg-white/15 text-xs font-bold uppercase dark:bg-gray-900/10">
-          GH
-        </span>
-        <span>
-          {isRedirecting ? "Redirecting to GitHub..." : "Continue with GitHub"}
-        </span>
-      </button>
-      {statusMessage ? (
-        <div className="mt-3 flex min-h-10 items-center justify-center rounded-lg border border-gray-200 bg-gray-100 px-4 text-sm text-gray-500 dark:border-gray-800 dark:bg-white/5 dark:text-gray-400">
-          {isLoadingStatus ? (
-            <LoadingIndicator label={statusMessage} size="sm" />
-          ) : (
-            statusMessage
-          )}
-        </div>
-      ) : null}
-    </div>
+    <SocialSignInButton
+      label={isRedirecting ? "Redirecting to GitHub..." : "Continue with GitHub"}
+      icon={<GitHubBrandIcon className="h-5 w-5 text-gray-950 dark:text-white" />}
+      onClick={handleGitHubSignIn}
+      disabled={disabled || isRedirecting}
+      isEnabled={isEnabled}
+      statusMessage={statusMessage}
+      isLoadingStatus={isLoadingStatus}
+    />
   );
 }

@@ -5,7 +5,8 @@ import {
   parseResponsePayload,
   setPendingAuthPersistencePreference,
 } from "../../lib/auth";
-import LoadingIndicator from "../common/LoadingIndicator";
+import SocialSignInButton from "./SocialSignInButton";
+import { LinkedInBrandIcon } from "./SocialBrandIcons";
 
 type LinkedInSignInButtonProps = {
   disabled?: boolean;
@@ -93,31 +94,16 @@ export default function LinkedInSignInButton({
   const isLoadingStatus = statusMessage === loadingStatusMessage;
 
   return (
-    <div className="w-full">
-      <button
-        type="button"
-        onClick={handleLinkedInSignIn}
-        disabled={disabled || !isEnabled || isRedirecting}
-        className={`flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-[#0A66C2] bg-white px-4 text-sm font-medium text-[#0A66C2] transition hover:bg-[#F3F8FE] disabled:cursor-not-allowed dark:bg-transparent ${
-          disabled || !isEnabled || isRedirecting ? "opacity-60" : ""
-        }`}
-      >
-        <span className="flex size-6 items-center justify-center rounded bg-[#0A66C2] text-xs font-bold uppercase text-white">
-          in
-        </span>
-        <span>
-          {isRedirecting ? "Redirecting to LinkedIn..." : "Continue with LinkedIn"}
-        </span>
-      </button>
-      {statusMessage ? (
-        <div className="mt-3 flex min-h-10 items-center justify-center rounded-lg border border-gray-200 bg-gray-100 px-4 text-sm text-gray-500 dark:border-gray-800 dark:bg-white/5 dark:text-gray-400">
-          {isLoadingStatus ? (
-            <LoadingIndicator label={statusMessage} size="sm" />
-          ) : (
-            statusMessage
-          )}
-        </div>
-      ) : null}
-    </div>
+    <SocialSignInButton
+      label={
+        isRedirecting ? "Redirecting to LinkedIn..." : "Continue with LinkedIn"
+      }
+      icon={<LinkedInBrandIcon className="h-5 w-5" />}
+      onClick={handleLinkedInSignIn}
+      disabled={disabled || isRedirecting}
+      isEnabled={isEnabled}
+      statusMessage={statusMessage}
+      isLoadingStatus={isLoadingStatus}
+    />
   );
 }
