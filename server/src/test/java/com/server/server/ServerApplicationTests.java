@@ -15,6 +15,8 @@ import com.server.server.auth.dto.AuthResponse;
 import com.server.server.auth.entity.UserRole;
 import com.server.server.auth.exception.DuplicateEmailException;
 import com.server.server.auth.exception.InvalidCredentialsException;
+import com.server.server.auth.github.GitHubOAuthClient;
+import com.server.server.auth.github.GitHubUserProfile;
 import com.server.server.auth.linkedin.LinkedInOAuthClient;
 import com.server.server.auth.linkedin.LinkedInUserProfile;
 import com.server.server.auth.repository.UserRepository;
@@ -60,6 +62,9 @@ class ServerApplicationTests {
     private LinkedInOAuthClient linkedInOAuthClient;
 
     @MockitoBean
+    private GitHubOAuthClient gitHubOAuthClient;
+
+    @MockitoBean
     private UserRepository userRepository;
 
     @Test
@@ -71,7 +76,8 @@ class ServerApplicationTests {
         mockMvc.perform(get("/api/auth/config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.googleSignInEnabled").isBoolean())
-                .andExpect(jsonPath("$.linkedinSignInEnabled").isBoolean());
+                .andExpect(jsonPath("$.linkedinSignInEnabled").isBoolean())
+                .andExpect(jsonPath("$.githubSignInEnabled").isBoolean());
     }
 
     @Test
@@ -205,6 +211,49 @@ class ServerApplicationTests {
                         UserRole.USER));
 
         mockMvc.perform(get("/api/auth/linkedin/callback")
+                        .session(session)
+                        .param("code", "valid-code")
+                        .param("state", "expected-state"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("http://localhost:5173/"));
+
+        verify(sessionAuthenticationService).signIn(any(), any(), any());
+    }
+
+    @Test
+    void githubAuthorizeRedirectsToGitHub() throws Exception {
+        given(gitHubOAuthClient.buildAuthorizationUrl(any()))
+                .willReturn("https://github.com/login/oauth/authorize?state=test-state");
+
+        mockMvc.perform(get("/api/auth/github/authorize"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("https://github.com/login/oauth/authorize*"));
+    }
+
+    @Test
+    void githubCallbackRedirectsBackToClientAfterSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("paf.github.oauth.state", "expected-state");
+
+        given(gitHubOAuthClient.authenticate("valid-code"))
+                .willReturn(new GitHubUserProfile(
+                        "github-user-123",
+                        "github@example.com",
+                        true,
+                        "GitHub User",
+                        "github-user",
+                        "https://example.com/photo.png"));
+        given(authService.signInWithGitHub(any()))
+                .willReturn(new AuthResponse(
+                        "507f1f77bcf86cd799439011",
+                        "github@example.com",
+                        "Signed in with GitHub successfully.",
+                        "GitHub User",
+                        "https://example.com/photo.png",
+                        "GITHUB",
+                        UserRole.USER));
+
+        mockMvc.perform(get("/api/auth/github/callback")
                         .session(session)
                         .param("code", "valid-code")
                         .param("state", "expected-state"))

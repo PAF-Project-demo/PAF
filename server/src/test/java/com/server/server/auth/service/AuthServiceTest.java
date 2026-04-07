@@ -12,6 +12,7 @@ import com.server.server.auth.dto.SignInRequest;
 import com.server.server.auth.dto.SignUpRequest;
 import com.server.server.auth.entity.User;
 import com.server.server.auth.entity.UserRole;
+import com.server.server.auth.github.GitHubUserProfile;
 import com.server.server.auth.google.GoogleIdentityVerifier;
 import com.server.server.auth.google.GoogleUserProfile;
 import com.server.server.auth.linkedin.LinkedInUserProfile;
@@ -232,5 +233,70 @@ class AuthServiceTest {
         assertThrows(
                 InvalidCredentialsException.class,
                 () -> authService.signInWithLinkedIn(linkedInUserProfile));
+    }
+
+    @Test
+    void signInWithGitHubCreatesUserWhenEmailDoesNotExist() {
+        GitHubUserProfile gitHubUserProfile = new GitHubUserProfile(
+                "github-user-123",
+                "user@example.com",
+                true,
+                "GitHub User",
+                "github-user",
+                "https://example.com/photo.png");
+
+        when(userRepository.findByGithubSubject("github-user-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User savedUser = invocation.getArgument(0);
+            savedUser.setId("user-123");
+            return savedUser;
+        });
+
+        AuthResponse response = authService.signInWithGitHub(gitHubUserProfile);
+
+        assertEquals("user-123", response.userId());
+        assertEquals("user@example.com", response.email());
+        assertEquals("GitHub User", response.displayName());
+        assertEquals("GITHUB", response.provider());
+        assertEquals(UserRole.USER, response.role());
+    }
+
+    @Test
+    void signInWithGitHubRejectsExistingPasswordAccount() {
+        User user = new User();
+        user.setId("user-123");
+        user.setEmail("user@example.com");
+        user.setPasswordHash("encoded-password");
+
+        GitHubUserProfile gitHubUserProfile = new GitHubUserProfile(
+                "github-user-123",
+                "user@example.com",
+                true,
+                "GitHub User",
+                "github-user",
+                "https://example.com/photo.png");
+
+        when(userRepository.findByGithubSubject("github-user-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+
+        assertThrows(
+                InvalidCredentialsException.class,
+                () -> authService.signInWithGitHub(gitHubUserProfile));
+    }
+
+    @Test
+    void signInShowsGitHubMessageWhenAccountUsesGitHub() {
+        User user = new User();
+        user.setEmail("user@example.com");
+        user.setGithubSubject("github-user-123");
+
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+
+        InvalidCredentialsException exception = assertThrows(
+                InvalidCredentialsException.class,
+                () -> authService.signIn(new SignInRequest("user@example.com", "secret123")));
+
+        assertEquals("This account uses GitHub sign-in. Continue with GitHub.", exception.getMessage());
     }
 }

@@ -7,6 +7,7 @@ import com.server.server.auth.dto.SignInRequest;
 import com.server.server.auth.dto.SignUpRequest;
 import com.server.server.auth.entity.User;
 import com.server.server.auth.entity.UserRole;
+import com.server.server.auth.github.GitHubUserProfile;
 import com.server.server.auth.google.GoogleIdentityVerifier;
 import com.server.server.auth.google.GoogleUserProfile;
 import com.server.server.auth.linkedin.LinkedInUserProfile;
@@ -175,6 +176,62 @@ public class AuthService {
         }
     }
 
+    public AuthResponse signInWithGitHub(GitHubUserProfile gitHubUserProfile) {
+        if (!hasText(gitHubUserProfile.subject())) {
+            throw new InvalidCredentialsException(
+                    "GitHub sign-in did not return a valid account identifier.");
+        }
+
+        if (Boolean.FALSE.equals(gitHubUserProfile.emailVerified())) {
+            throw new InvalidCredentialsException("Your GitHub account email is not verified.");
+        }
+
+        if (gitHubUserProfile.email() == null || gitHubUserProfile.email().isBlank()) {
+            throw new InvalidCredentialsException(
+                    "Your GitHub account did not provide a verified email address.");
+        }
+
+        User user = userRepository.findByGithubSubject(gitHubUserProfile.subject())
+                .orElseGet(() -> userRepository.findByEmail(gitHubUserProfile.email())
+                        .map(existingUser -> {
+                            if ((existingUser.getGithubSubject() == null || existingUser.getGithubSubject().isBlank())
+                                    && usesDifferentSignInMethod(existingUser, "GITHUB")) {
+                                throw new InvalidCredentialsException(
+                                        "This email already belongs to another sign-in method. Use your existing sign-in option.");
+                            }
+
+                            return existingUser;
+                        })
+                        .orElseGet(User::new));
+
+        boolean isNewUser = user.getId() == null;
+
+        if (user.getGithubSubject() == null || user.getGithubSubject().isBlank()) {
+            user.setGithubSubject(gitHubUserProfile.subject());
+        }
+
+        user.setEmail(gitHubUserProfile.email());
+        setIfText(user::setDisplayName, resolveGitHubDisplayName(gitHubUserProfile));
+        setIfText(user::setPhotoUrl, gitHubUserProfile.pictureUrl());
+        if (user.getRole() == null) {
+            user.setRole(UserRole.USER);
+        }
+
+        if (isNewUser) {
+            user.setCreatedAt(LocalDateTime.now());
+        }
+
+        try {
+            User savedUser = userRepository.save(user);
+            String message = isNewUser
+                    ? "GitHub account connected successfully."
+                    : "Signed in with GitHub successfully.";
+            return AuthResponses.fromUser(savedUser, message);
+        } catch (DuplicateKeyException exception) {
+            throw new DuplicateEmailException("An account with this email already exists");
+        }
+    }
+
     private User ensureUserRole(User user) {
         if (user.getRole() != null) {
             return user;
@@ -188,7 +245,8 @@ public class AuthService {
         boolean usesPassword = hasText(user.getPasswordHash());
         boolean usesGoogle = hasText(user.getGoogleSubject()) && !"GOOGLE".equals(provider);
         boolean usesLinkedIn = hasText(user.getLinkedinSubject()) && !"LINKEDIN".equals(provider);
-        return usesPassword || usesGoogle || usesLinkedIn;
+        boolean usesGitHub = hasText(user.getGithubSubject()) && !"GITHUB".equals(provider);
+        return usesPassword || usesGoogle || usesLinkedIn || usesGitHub;
     }
 
     private String resolveLinkedInDisplayName(LinkedInUserProfile linkedInUserProfile) {
@@ -210,6 +268,16 @@ public class AuthService {
         return hasText(lastName) ? lastName.trim() : null;
     }
 
+    private String resolveGitHubDisplayName(GitHubUserProfile gitHubUserProfile) {
+        if (hasText(gitHubUserProfile.displayName())) {
+            return gitHubUserProfile.displayName().trim();
+        }
+
+        return hasText(gitHubUserProfile.username())
+                ? gitHubUserProfile.username().trim()
+                : null;
+    }
+
     private void setIfText(Consumer<String> setter, String value) {
         if (hasText(value)) {
             setter.accept(value.trim());
@@ -223,6 +291,10 @@ public class AuthService {
     private String resolveExternalSignInMessage(User user) {
         if (hasText(user.getLinkedinSubject())) {
             return "This account uses LinkedIn sign-in. Continue with LinkedIn.";
+        }
+
+        if (hasText(user.getGithubSubject())) {
+            return "This account uses GitHub sign-in. Continue with GitHub.";
         }
 
         if (hasText(user.getGoogleSubject())) {

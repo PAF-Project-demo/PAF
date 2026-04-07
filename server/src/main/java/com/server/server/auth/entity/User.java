@@ -20,6 +20,9 @@ public class User {
     @Indexed(unique = true, sparse = true)
     private String linkedinSubject;
 
+    @Indexed(unique = true, sparse = true)
+    private String githubSubject;
+
     private String passwordHash;
 
     private String displayName;
@@ -84,6 +87,14 @@ public class User {
 
     public void setLinkedinSubject(String linkedinSubject) {
         this.linkedinSubject = linkedinSubject;
+    }
+
+    public String getGithubSubject() {
+        return githubSubject;
+    }
+
+    public void setGithubSubject(String githubSubject) {
+        this.githubSubject = githubSubject;
     }
 
     public UserRole getRole() {

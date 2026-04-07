@@ -6,6 +6,7 @@ import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import GoogleSignInButton from "./GoogleSignInButton";
+import GitHubSignInButton from "./GitHubSignInButton";
 import LinkedInSignInButton from "./LinkedInSignInButton";
 import LoadingIndicator from "../common/LoadingIndicator";
 import { useNotification } from "../common/NotificationProvider";
@@ -49,6 +50,7 @@ export default function SignInForm() {
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkedinError, setLinkedinError] = useState("");
+  const [githubError, setGithubError] = useState("");
   const [googleError, setGoogleError] = useState("");
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const isAuthenticating = isSubmitting || isGoogleSubmitting;
@@ -81,18 +83,35 @@ export default function SignInForm() {
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const linkedInErrorMessage = searchParams.get("linkedinError");
+    const gitHubErrorMessage = searchParams.get("githubError");
 
-    if (!linkedInErrorMessage?.trim()) {
+    const socialError =
+      typeof linkedInErrorMessage === "string" && linkedInErrorMessage.trim()
+        ? {
+            message: linkedInErrorMessage.trim(),
+            title: "LinkedIn sign-in failed",
+            clearSocialError: () => setLinkedinError(""),
+          }
+        : typeof gitHubErrorMessage === "string" && gitHubErrorMessage.trim()
+        ? {
+            message: gitHubErrorMessage.trim(),
+            title: "GitHub sign-in failed",
+            clearSocialError: () => setGithubError(""),
+          }
+        : null;
+
+    if (!socialError) {
       return;
     }
 
-    const message = linkedInErrorMessage.trim();
-    setServerError(message);
+    setServerError(socialError.message);
     setLinkedinError("");
+    setGithubError("");
+    socialError.clearSocialError();
     showNotification({
       variant: "error",
-      title: "LinkedIn sign-in failed",
-      message,
+      title: socialError.title,
+      message: socialError.message,
     });
     navigate("/signin", {
       replace: true,
@@ -128,6 +147,7 @@ export default function SignInForm() {
       [field]: undefined,
     }));
     setLinkedinError("");
+    setGithubError("");
     setServerError("");
     setGoogleError("");
   };
@@ -170,6 +190,8 @@ export default function SignInForm() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setServerError("");
+    setLinkedinError("");
+    setGithubError("");
     setGoogleError("");
 
     if (!validateForm()) {
@@ -234,6 +256,8 @@ export default function SignInForm() {
 
   const handleGoogleSignIn = async (credential: string) => {
     setServerError("");
+    setLinkedinError("");
+    setGithubError("");
     setGoogleError("");
     setIsGoogleSubmitting(true);
 
@@ -327,7 +351,8 @@ export default function SignInForm() {
                 Sign In
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Use LinkedIn, Google, or your email and password to sign in.
+                Use LinkedIn, GitHub, Google, or your email and password to sign
+                in.
               </p>
             </div>
 
@@ -349,20 +374,25 @@ export default function SignInForm() {
                   keepUserSignedIn={isChecked}
                   onError={setLinkedinError}
                 />
+                <GitHubSignInButton
+                  disabled={isAuthenticating}
+                  keepUserSignedIn={isChecked}
+                  onError={setGithubError}
+                />
                 <GoogleSignInButton
                   disabled={isAuthenticating}
                   onCredential={handleGoogleSignIn}
                   onError={setGoogleError}
                 />
               </div>
-              {linkedinError || googleError ? (
+              {linkedinError || githubError || googleError ? (
                 <p className="mt-3 text-xs text-error-600 dark:text-error-400">
-                  {linkedinError || googleError}
+                  {linkedinError || githubError || googleError}
                 </p>
               ) : (
                 <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                  Continue with LinkedIn or Google above, or use your email and
-                  password below.
+                  Continue with LinkedIn, GitHub, or Google above, or use your
+                  email and password below.
                 </p>
               )}
               <div className="relative py-3 sm:py-5">
