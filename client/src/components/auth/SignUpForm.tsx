@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
+import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
@@ -326,17 +326,8 @@ export default function SignUpForm() {
   };
 
   return (
-    <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar">
-      <div className="w-full max-w-md mx-auto mb-5 sm:pt-10">
-        <Link
-          to="/"
-          className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-        >
-          <ChevronLeftIcon className="size-5" />
-          Back to dashboard
-        </Link>
-      </div>
-      <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
+    <div className="flex flex-1 flex-col w-full overflow-y-auto no-scrollbar">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
         <div className="relative" aria-busy={isAuthenticating}>
           {isAuthenticating ? (
             <div className="absolute inset-0 z-20 flex items-center justify-center rounded-3xl bg-white/85 px-6 backdrop-blur-sm dark:bg-gray-900/85">
@@ -359,28 +350,12 @@ export default function SignUpForm() {
                 Sign Up
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Continue with LinkedIn, GitHub, or Google above, or create your
-                account with your email and password below.
+                Create your account with your email and password, or continue
+                with Google, LinkedIn, or GitHub.
               </p>
             </div>
 
-            <div className="space-y-3">
-              <LinkedInSignInButton
-                disabled={isAuthenticating}
-                onError={setLinkedinError}
-                source="signup"
-              />
-              <GitHubSignInButton
-                disabled={isAuthenticating}
-                onError={setGithubError}
-                source="signup"
-              />
-              <GoogleSignInButton
-                disabled={isAuthenticating}
-                onCredential={handleGoogleSignUp}
-                onError={setGoogleError}
-              />
-            </div>
+           
 
             {linkedinError || githubError || googleError ? (
               <p className="mt-3 text-xs text-error-600 dark:text-error-400">
@@ -388,21 +363,10 @@ export default function SignUpForm() {
               </p>
             ) : (
               <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                Continue with LinkedIn, GitHub, or Google above, or create your
-                account with your email and password below.
               </p>
             )}
 
-            <div className="relative py-3 sm:py-5">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="p-2 text-gray-400 bg-white dark:bg-gray-900 sm:px-5 sm:py-2">
-                  Or
-                </span>
-              </div>
-            </div>
+        
 
             <form onSubmit={handleSubmit}>
               <div className="space-y-5">
@@ -436,22 +400,25 @@ export default function SignUpForm() {
                       onChange={(event) =>
                         handleChange("password", event.target.value)
                       }
-                      placeholder="Enter your password"
+                      placeholder="Create a password"
                       disabled={isAuthenticating}
                       error={Boolean(errors.password)}
                       hint={errors.password}
                     />
                     <span
                       onClick={() => setShowPassword((current) => !current)}
-                      className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
+                      className="absolute right-4 top-1/2 z-30 -translate-y-1/2 cursor-pointer"
                     >
                       {showPassword ? (
-                        <EyeIcon className="fill-gray-500 dark:fill-gray-400 size-5" />
+                        <EyeIcon className="size-5 fill-gray-500 dark:fill-gray-400" />
                       ) : (
-                        <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400 size-5" />
+                        <EyeCloseIcon className="size-5 fill-gray-500 dark:fill-gray-400" />
                       )}
                     </span>
                   </div>
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Use at least 6 characters for your password.
+                  </p>
                 </div>
 
                 {serverError ? (
@@ -460,20 +427,18 @@ export default function SignUpForm() {
                   </div>
                 ) : null}
 
-                <div>
-                  <Button
-                    className="w-full"
-                    size="sm"
-                    disabled={isAuthenticating}
-                    startIcon={
-                      isSubmitting ? (
-                        <LoadingIndicator size="sm" tone="inverse" />
-                      ) : undefined
-                    }
-                  >
-                    {isSubmitting ? "Creating account" : "Sign Up"}
-                  </Button>
-                </div>
+                <Button
+                  className="w-full"
+                  size="sm"
+                  disabled={isAuthenticating}
+                  startIcon={
+                    isSubmitting ? (
+                      <LoadingIndicator size="sm" tone="inverse" />
+                    ) : undefined
+                  }
+                >
+                  {isSubmitting ? "Creating account" : "Create account"}
+                </Button>
               </div>
             </form>
 
@@ -487,6 +452,33 @@ export default function SignUpForm() {
                   Sign In
                 </Link>
               </p>
+            </div>
+    <div className="relative py-3">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white p-2 text-gray-400 dark:bg-gray-900 sm:px-5 sm:py-2">
+                  Or
+                </span>
+              </div>
+            </div>
+             <div className="space-y-3">
+              <GoogleSignInButton
+                disabled={isAuthenticating}
+                onCredential={handleGoogleSignUp}
+                onError={setGoogleError}
+              />
+              <LinkedInSignInButton
+                disabled={isAuthenticating}
+                onError={setLinkedinError}
+                source="signup"
+              />
+              <GitHubSignInButton
+                disabled={isAuthenticating}
+                onError={setGithubError}
+                source="signup"
+              />
             </div>
           </div>
         </div>
