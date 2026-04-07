@@ -47,6 +47,9 @@ public class AuthController {
     private static final String LINKEDIN_STATE_ATTRIBUTE = "paf.linkedin.oauth.state";
     private static final String LINKEDIN_REMEMBER_ATTRIBUTE = "paf.linkedin.oauth.remember";
     private static final String GITHUB_STATE_ATTRIBUTE = "paf.github.oauth.state";
+    private static final String AUTH_STATUS_QUERY_PARAMETER = "authStatus";
+    private static final String AUTH_PROVIDER_QUERY_PARAMETER = "authProvider";
+    private static final String AUTH_MESSAGE_QUERY_PARAMETER = "authMessage";
 
     private final AuthService authService;
     private final SessionAuthenticationService sessionAuthenticationService;
@@ -264,7 +267,7 @@ public class AuthController {
             boolean success,
             String message) throws IOException {
         String redirectUri = success
-                ? buildClientSuccessRedirectUri(linkedInClientRedirectUri)
+                ? buildClientSuccessRedirectUri(linkedInClientRedirectUri, "linkedin", message)
                 : buildClientErrorRedirectUri(linkedInClientRedirectUri, "linkedinError", message);
 
         httpResponse.sendRedirect(redirectUri);
@@ -275,15 +278,21 @@ public class AuthController {
             boolean success,
             String message) throws IOException {
         String redirectUri = success
-                ? buildClientSuccessRedirectUri(gitHubClientRedirectUri)
+                ? buildClientSuccessRedirectUri(gitHubClientRedirectUri, "github", message)
                 : buildClientErrorRedirectUri(gitHubClientRedirectUri, "githubError", message);
 
         httpResponse.sendRedirect(redirectUri);
     }
 
-    private String buildClientSuccessRedirectUri(String clientRedirectUri) {
+    private String buildClientSuccessRedirectUri(
+            String clientRedirectUri,
+            String provider,
+            String message) {
         return UriComponentsBuilder.fromUriString(clientRedirectUri)
                 .replaceQuery(null)
+                .queryParam(AUTH_STATUS_QUERY_PARAMETER, "success")
+                .queryParam(AUTH_PROVIDER_QUERY_PARAMETER, provider)
+                .queryParam(AUTH_MESSAGE_QUERY_PARAMETER, message)
                 .fragment(null)
                 .build()
                 .encode()

@@ -25,12 +25,14 @@ import {
   RequireAuth,
   RequireAdmin,
 } from "./components/auth/AuthRouteGuards";
+import OAuthStatusHandler from "./components/auth/OAuthStatusHandler";
 
 export default function App() {
   return (
     <>
       <Router>
         <ScrollToTop />
+        <OAuthStatusHandler />
         <Routes>
           <Route element={<RequireAuth />}>
             {/* Dashboard Layout */}

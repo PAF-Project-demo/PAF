@@ -215,7 +215,8 @@ class ServerApplicationTests {
                         .param("code", "valid-code")
                         .param("state", "expected-state"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("http://localhost:5173/"));
+                .andExpect(redirectedUrl(
+                        "http://localhost:5173/?authStatus=success&authProvider=linkedin&authMessage=Signed%20in%20with%20LinkedIn%20successfully."));
 
         verify(sessionAuthenticationService).signIn(any(), any(), any());
     }
@@ -258,7 +259,8 @@ class ServerApplicationTests {
                         .param("code", "valid-code")
                         .param("state", "expected-state"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("http://localhost:5173/"));
+                .andExpect(redirectedUrl(
+                        "http://localhost:5173/?authStatus=success&authProvider=github&authMessage=Signed%20in%20with%20GitHub%20successfully."));
 
         verify(sessionAuthenticationService).signIn(any(), any(), any());
     }
