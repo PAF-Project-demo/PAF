@@ -7,7 +7,7 @@ export default function SignIn() {
     <>
       <PageMeta
         title="Sign In | PAF"
-        description="Sign in with your email and password to access the PAF dashboard."
+        description="Sign in with LinkedIn, Google, or your email and password to access the PAF dashboard."
       />
       <AuthLayout>
         <SignInForm />

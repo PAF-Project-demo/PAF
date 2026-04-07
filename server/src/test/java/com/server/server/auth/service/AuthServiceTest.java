@@ -14,6 +14,7 @@ import com.server.server.auth.entity.User;
 import com.server.server.auth.entity.UserRole;
 import com.server.server.auth.google.GoogleIdentityVerifier;
 import com.server.server.auth.google.GoogleUserProfile;
+import com.server.server.auth.linkedin.LinkedInUserProfile;
 import com.server.server.auth.exception.DuplicateEmailException;
 import com.server.server.auth.exception.InvalidCredentialsException;
 import com.server.server.auth.repository.UserRepository;
@@ -153,5 +154,83 @@ class AuthServiceTest {
         assertThrows(
                 InvalidCredentialsException.class,
                 () -> authService.signInWithGoogle(new GoogleSignInRequest("google-token")));
+    }
+
+    @Test
+    void signInWithGoogleRejectsExistingLinkedInAccount() {
+        User user = new User();
+        user.setId("user-123");
+        user.setEmail("user@example.com");
+        user.setLinkedinSubject("linkedin-subject-123");
+
+        GoogleUserProfile googleUserProfile = new GoogleUserProfile(
+                "google-subject-123",
+                "user@example.com",
+                true,
+                "Google User",
+                "https://example.com/photo.png",
+                null);
+
+        when(googleIdentityVerifier.verify("google-token")).thenReturn(googleUserProfile);
+        when(userRepository.findByGoogleSubject("google-subject-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+
+        assertThrows(
+                InvalidCredentialsException.class,
+                () -> authService.signInWithGoogle(new GoogleSignInRequest("google-token")));
+    }
+
+    @Test
+    void signInWithLinkedInCreatesUserWhenEmailDoesNotExist() {
+        LinkedInUserProfile linkedInUserProfile = new LinkedInUserProfile(
+                "linkedin-subject-123",
+                "user@example.com",
+                true,
+                "LinkedIn User",
+                "LinkedIn",
+                "User",
+                "https://example.com/photo.png",
+                "en_US");
+
+        when(userRepository.findByLinkedinSubject("linkedin-subject-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User savedUser = invocation.getArgument(0);
+            savedUser.setId("user-123");
+            return savedUser;
+        });
+
+        AuthResponse response = authService.signInWithLinkedIn(linkedInUserProfile);
+
+        assertEquals("user-123", response.userId());
+        assertEquals("user@example.com", response.email());
+        assertEquals("LinkedIn User", response.displayName());
+        assertEquals("LINKEDIN", response.provider());
+        assertEquals(UserRole.USER, response.role());
+    }
+
+    @Test
+    void signInWithLinkedInRejectsExistingPasswordAccount() {
+        User user = new User();
+        user.setId("user-123");
+        user.setEmail("user@example.com");
+        user.setPasswordHash("encoded-password");
+
+        LinkedInUserProfile linkedInUserProfile = new LinkedInUserProfile(
+                "linkedin-subject-123",
+                "user@example.com",
+                true,
+                "LinkedIn User",
+                "LinkedIn",
+                "User",
+                "https://example.com/photo.png",
+                "en_US");
+
+        when(userRepository.findByLinkedinSubject("linkedin-subject-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+
+        assertThrows(
+                InvalidCredentialsException.class,
+                () -> authService.signInWithLinkedIn(linkedInUserProfile));
     }
 }

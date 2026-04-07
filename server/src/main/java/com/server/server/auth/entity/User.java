@@ -17,6 +17,9 @@ public class User {
     @Indexed(unique = true, sparse = true)
     private String googleSubject;
 
+    @Indexed(unique = true, sparse = true)
+    private String linkedinSubject;
+
     private String passwordHash;
 
     private String displayName;
@@ -73,6 +76,14 @@ public class User {
 
     public void setPhotoUrl(String photoUrl) {
         this.photoUrl = photoUrl;
+    }
+
+    public String getLinkedinSubject() {
+        return linkedinSubject;
+    }
+
+    public void setLinkedinSubject(String linkedinSubject) {
+        this.linkedinSubject = linkedinSubject;
     }
 
     public UserRole getRole() {

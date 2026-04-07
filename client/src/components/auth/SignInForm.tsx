@@ -6,6 +6,7 @@ import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import GoogleSignInButton from "./GoogleSignInButton";
+import LinkedInSignInButton from "./LinkedInSignInButton";
 import LoadingIndicator from "../common/LoadingIndicator";
 import { useNotification } from "../common/NotificationProvider";
 import {
@@ -47,6 +48,7 @@ export default function SignInForm() {
   const [isChecked, setIsChecked] = useState(false);
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linkedinError, setLinkedinError] = useState("");
   const [googleError, setGoogleError] = useState("");
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const isAuthenticating = isSubmitting || isGoogleSubmitting;
@@ -76,6 +78,28 @@ export default function SignInForm() {
     );
   }, [location.state]);
 
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const linkedInErrorMessage = searchParams.get("linkedinError");
+
+    if (!linkedInErrorMessage?.trim()) {
+      return;
+    }
+
+    const message = linkedInErrorMessage.trim();
+    setServerError(message);
+    setLinkedinError("");
+    showNotification({
+      variant: "error",
+      title: "LinkedIn sign-in failed",
+      message,
+    });
+    navigate("/signin", {
+      replace: true,
+      state: location.state,
+    });
+  }, [location.search, location.state, navigate, showNotification]);
+
   const validateForm = () => {
     const nextErrors: FormErrors = {};
 
@@ -103,6 +127,7 @@ export default function SignInForm() {
       ...current,
       [field]: undefined,
     }));
+    setLinkedinError("");
     setServerError("");
     setGoogleError("");
   };
@@ -302,26 +327,42 @@ export default function SignInForm() {
                 Sign In
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Enter your email and password to sign in!
+                Use LinkedIn, Google, or your email and password to sign in.
               </p>
+            </div>
+
+            <div className="mb-5 flex items-center gap-3">
+              <Checkbox
+                checked={isChecked}
+                onChange={setIsChecked}
+                disabled={isAuthenticating}
+              />
+              <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
+                Keep me logged in
+              </span>
             </div>
 
             <div>
               <div className="space-y-3">
+                <LinkedInSignInButton
+                  disabled={isAuthenticating}
+                  keepUserSignedIn={isChecked}
+                  onError={setLinkedinError}
+                />
                 <GoogleSignInButton
-                  disabled={isSubmitting || isGoogleSubmitting}
+                  disabled={isAuthenticating}
                   onCredential={handleGoogleSignIn}
                   onError={setGoogleError}
                 />
               </div>
-              {googleError ? (
+              {linkedinError || googleError ? (
                 <p className="mt-3 text-xs text-error-600 dark:text-error-400">
-                  {googleError}
+                  {linkedinError || googleError}
                 </p>
               ) : (
                 <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                  {/* Continue with Google above, or use your email and password
-                  below. */}
+                  Continue with LinkedIn or Google above, or use your email and
+                  password below.
                 </p>
               )}
               <div className="relative py-3 sm:py-5">
@@ -388,16 +429,6 @@ export default function SignInForm() {
                     </div>
                   ) : null}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={isChecked}
-                        onChange={setIsChecked}
-                        disabled={isAuthenticating}
-                      />
-                      <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
-                        Keep me logged in
-                      </span>
-                    </div>
                     <Link
                       to="/reset-password"
                       className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"

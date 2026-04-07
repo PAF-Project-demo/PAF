@@ -50,7 +50,8 @@ public class SecurityConfig {
                                 "/api/auth/config",
                                 "/api/auth/signup",
                                 "/api/auth/signin",
-                                "/api/auth/google")
+                                "/api/auth/google",
+                                "/api/auth/linkedin/**")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
