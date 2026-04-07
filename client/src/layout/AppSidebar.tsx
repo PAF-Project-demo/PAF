@@ -38,6 +38,11 @@ const navItems: NavItem[] = [
     path: "/calendar",
   },
   {
+    icon: <BoxCubeIcon />, // Assuming this icon is suitable
+    name: "Facilities & Assets",
+    path: "/resources",
+  },
+  {
     name: "Role Management",
     icon: <GroupIcon />,
     subItems: [

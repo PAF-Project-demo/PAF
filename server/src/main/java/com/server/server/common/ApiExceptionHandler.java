@@ -14,6 +14,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import com.server.server.resource.exception.ResourceNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -64,5 +65,10 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleDatabaseError(DataAccessException exception) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(new ApiError("MongoDB connection is unavailable. Check MONGODB_URI or MONGODB_PASSWORD."));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiError> handleResourceNotFound(ResourceNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(exception.getMessage()));
     }
 }
