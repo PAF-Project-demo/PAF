@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch, parseResponsePayload } from "../../lib/auth";
-import LoadingIndicator from "../common/LoadingIndicator";
+import SocialSignInButton from "./SocialSignInButton";
+import { GoogleBrandIcon } from "./SocialBrandIcons";
 
 type GoogleSignInButtonProps = {
   disabled?: boolean;
@@ -199,7 +200,7 @@ export default function GoogleSignInButton({
       });
 
       setIsReady(true);
-      setStatusMessage("Loading Google sign-in...");
+      setStatusMessage("");
     };
 
     setIsReady(false);
@@ -231,21 +232,21 @@ export default function GoogleSignInButton({
   }, [googleClientId]);
 
   return (
-    <div
-      className={`w-full min-h-12 rounded-lg ${
-        disabled ? "pointer-events-none opacity-60" : ""
-      }`}
-    >
-      <div ref={buttonContainerRef} className="flex w-full justify-center" />
-      {!isReady ? (
-        <div className="flex h-12 w-full items-center justify-center rounded-lg border border-gray-200 bg-gray-100 px-4 text-sm text-gray-500 dark:border-gray-800 dark:bg-white/5 dark:text-gray-400">
-          {isLoadingStatus ? (
-            <LoadingIndicator label={statusMessage} size="sm" />
-          ) : (
-            statusMessage
-          )}
-        </div>
-      ) : null}
-    </div>
+    <SocialSignInButton
+      label="Continue with Google"
+      icon={<GoogleBrandIcon className="h-5 w-5" />}
+      disabled={disabled}
+      isEnabled={isReady}
+      statusMessage={statusMessage}
+      isLoadingStatus={isLoadingStatus}
+      overlay={
+        googleClientId ? (
+          <div
+            ref={buttonContainerRef}
+            className="flex h-10 w-full items-center justify-center"
+          />
+        ) : undefined
+      }
+    />
   );
 }

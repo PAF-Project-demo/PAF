@@ -10,7 +10,11 @@ public final class AuthResponses {
 
     public static AuthResponse fromUser(User user, String message) {
         UserRole role = user.getRole() != null ? user.getRole() : UserRole.USER;
-        String provider = isNotBlank(user.getGoogleSubject()) ? "GOOGLE" : "LOCAL";
+        String provider = isNotBlank(user.getLinkedinSubject())
+                ? "LINKEDIN"
+                : isNotBlank(user.getGithubSubject())
+                        ? "GITHUB"
+                        : isNotBlank(user.getGoogleSubject()) ? "GOOGLE" : "LOCAL";
 
         return new AuthResponse(
                 user.getId(),

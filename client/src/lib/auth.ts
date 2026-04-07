@@ -24,6 +24,7 @@ export const authApiBaseUrl = (
 export const AUTH_CHANGE_EVENT = "paf-auth-change";
 
 const AUTH_STORAGE_KEY = "paf.auth.session";
+const PENDING_AUTH_STORAGE_KEY = "paf.auth.pending.keep-signed-in";
 
 const isNullableString = (value: unknown) =>
   value === undefined || value === null || typeof value === "string";
@@ -152,6 +153,7 @@ export const persistAuthSession = (
 export const clearAuthSession = () => {
   for (const storage of getAuthStorages()) {
     storage.removeItem(AUTH_STORAGE_KEY);
+    storage.removeItem(PENDING_AUTH_STORAGE_KEY);
   }
 
   emitAuthChange();
@@ -171,6 +173,38 @@ export const replaceStoredAuthSession = (session: AuthSession) => {
 
   selectedStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
   emitAuthChange();
+};
+
+export const setPendingAuthPersistencePreference = (
+  keepUserSignedIn: boolean
+) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.setItem(
+    PENDING_AUTH_STORAGE_KEY,
+    keepUserSignedIn ? "true" : "false"
+  );
+};
+
+export const consumePendingAuthPersistencePreference = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const rawValue = window.sessionStorage.getItem(PENDING_AUTH_STORAGE_KEY);
+  window.sessionStorage.removeItem(PENDING_AUTH_STORAGE_KEY);
+
+  if (rawValue === "true") {
+    return true;
+  }
+
+  if (rawValue === "false") {
+    return false;
+  }
+
+  return null;
 };
 
 export const buildAuthSession = (

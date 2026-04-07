@@ -25,6 +25,7 @@ import {
   RequireAuth,
   RequireAdmin,
 } from "./components/auth/AuthRouteGuards";
+import OAuthStatusHandler from "./components/auth/OAuthStatusHandler";
 
 // Facilities & Assets Pages
 import ResourceListPage from "./pages/Facilities/ResourceListPage";
@@ -36,6 +37,7 @@ export default function App() {
     <>
       <Router>
         <ScrollToTop />
+        <OAuthStatusHandler />
         <Routes>
           <Route element={<RequireAuth />}>
             {/* Dashboard Layout */}
