@@ -27,6 +27,11 @@ import {
 } from "./components/auth/AuthRouteGuards";
 import OAuthStatusHandler from "./components/auth/OAuthStatusHandler";
 
+// Facilities & Assets Pages
+import ResourceListPage from "./pages/Facilities/ResourceListPage";
+import ResourceDetailPage from "./pages/Facilities/ResourceDetailPage";
+import ResourceFormPage from "./pages/Facilities/ResourceFormPage";
+
 export default function App() {
   return (
     <>
@@ -43,6 +48,14 @@ export default function App() {
               <Route path="/profile" element={<UserProfiles />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/blank" element={<Blank />} />
+
+              {/* Facilities & Assets Catalogue */}
+              <Route path="/resources" element={<ResourceListPage />} />
+              <Route path="/resources/:id" element={<ResourceDetailPage />} />
+              <Route element={<RequireAdmin />}>
+                <Route path="/resources/new" element={<ResourceFormPage />} />
+                <Route path="/resources/:id/edit" element={<ResourceFormPage />} />
+              </Route>
 
               {/* Forms */}
               <Route path="/form-elements" element={<FormElements />} />
