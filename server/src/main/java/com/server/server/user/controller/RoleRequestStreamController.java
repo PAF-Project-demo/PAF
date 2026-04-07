@@ -5,6 +5,8 @@ import com.server.server.auth.entity.UserRole;
 import com.server.server.user.service.RoleRequestRealtimeService;
 import com.server.server.user.service.UserAccessService;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,11 +27,12 @@ public class RoleRequestStreamController {
         this.roleRequestRealtimeService = roleRequestRealtimeService;
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamRoleRequests(
-            @RequestParam String userId,
+            Authentication authentication,
             @RequestParam(defaultValue = "false") boolean adminEvents) {
-        User user = userAccessService.getAuthenticatedUser(userId);
+        User user = userAccessService.getAuthenticatedUser(authentication.getName());
         boolean subscribeToAdminEvents = adminEvents && getUserRole(user) == UserRole.ADMIN;
         return roleRequestRealtimeService.subscribe(user.getId(), subscribeToAdminEvents);
     }

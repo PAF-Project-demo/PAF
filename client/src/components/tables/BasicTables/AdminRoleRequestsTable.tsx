@@ -15,7 +15,7 @@ import LoadingIndicator from "../../common/LoadingIndicator";
 import { useNotification } from "../../common/NotificationProvider";
 import { CheckLineIcon, CloseIcon } from "../../../icons";
 import {
-  authApiBaseUrl,
+  apiFetch,
   formatRoleLabel,
   getApiMessage,
   getStoredAuthSession,
@@ -199,11 +199,8 @@ export default function AdminRoleRequestsTable({
           return;
         }
 
-        const response = await fetch(`${authApiBaseUrl}/api/role-requests`, {
+        const response = await apiFetch("/api/role-requests", {
           signal: abortController.signal,
-          headers: {
-            "X-Auth-User-Id": authSession.userId,
-          },
         });
 
         const rawResponse = await response.text();
@@ -309,13 +306,10 @@ export default function AdminRoleRequestsTable({
     setApprovingRequestId(roleRequest.id);
 
     try {
-      const response = await fetch(
-        `${authApiBaseUrl}/api/role-requests/${roleRequest.id}/approve`,
+      const response = await apiFetch(
+        `/api/role-requests/${roleRequest.id}/approve`,
         {
           method: "PATCH",
-          headers: {
-            "X-Auth-User-Id": authSession.userId,
-          },
         }
       );
 
@@ -402,13 +396,12 @@ export default function AdminRoleRequestsTable({
     setRejectionError("");
 
     try {
-      const response = await fetch(
-        `${authApiBaseUrl}/api/role-requests/${roleRequest.id}/reject`,
+      const response = await apiFetch(
+        `/api/role-requests/${roleRequest.id}/reject`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            "X-Auth-User-Id": authSession.userId,
           },
           body: JSON.stringify({
             rejectionReason: trimmedRejectionReason,
