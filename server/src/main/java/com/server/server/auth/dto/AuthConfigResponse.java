@@ -1,4 +1,8 @@
 package com.server.server.auth.dto;
 
-public record AuthConfigResponse(boolean googleSignInEnabled, String googleClientId) {
+public record AuthConfigResponse(
+        boolean googleSignInEnabled,
+        String googleClientId,
+        boolean linkedinSignInEnabled,
+        boolean githubSignInEnabled) {
 }
