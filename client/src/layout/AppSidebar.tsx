@@ -10,9 +10,9 @@ import {
   GridIcon,
   HorizontaLDots,
   ListIcon,
-  PageIcon,
   PieChartIcon,
   PlugInIcon,
+  TaskIcon,
   UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
@@ -63,11 +63,12 @@ const navItems: NavItem[] = [
   },
 
   {
-    name: "Pages",
-    icon: <PageIcon />,
+    name: "Resource Booking",
+    icon: <TaskIcon />,
     subItems: [
-      { name: "Blank Page", path: "/blank", pro: false },
-      { name: "404 Error", path: "/error-404", pro: false },
+      { name: "Book Resource", path: "/bookings", pro: false },
+      { name: "My Bookings", path: "/bookings", pro: false },
+      { name: "Calendar", path: "/bookings", pro: false },
     ],
   },
 ];
