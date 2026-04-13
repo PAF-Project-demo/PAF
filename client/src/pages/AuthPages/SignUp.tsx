@@ -7,7 +7,7 @@ export default function SignUp() {
     <>
       <PageMeta
         title="Sign Up | PAF"
-        description="Create a new account with your email and password."
+        description="Continue with LinkedIn, GitHub, Google, or create a new account with your email and password."
       />
       <AuthLayout>
         <SignUpForm />

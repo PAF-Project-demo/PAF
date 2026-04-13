@@ -8,7 +8,9 @@ import {
 import {
   AUTH_CHANGE_EVENT,
   clearAuthSession,
+  consumePendingAuthPersistencePreference,
   getStoredAuthSession,
+  persistAuthSession,
   replaceStoredAuthSession,
   restoreAuthSessionFromServer,
   type AuthSession,
@@ -59,7 +61,14 @@ export const AuthSessionProvider = ({
         }
 
         if (restoredSession) {
-          replaceStoredAuthSession(restoredSession);
+          const pendingPersistencePreference =
+            consumePendingAuthPersistencePreference();
+
+          if (pendingPersistencePreference !== null) {
+            persistAuthSession(restoredSession, pendingPersistencePreference);
+          } else {
+            replaceStoredAuthSession(restoredSession);
+          }
           setAuthSession(restoredSession);
           return;
         }
