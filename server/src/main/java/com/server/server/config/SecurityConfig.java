@@ -46,6 +46,9 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/resources").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/resources/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/resources/**").permitAll()
                         .requestMatchers(
                                 "/api/auth/config",
                                 "/api/auth/signup",

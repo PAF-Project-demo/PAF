@@ -2,6 +2,7 @@ package com.server.server.resource.entity;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 
 @Document(collection = "resources")
@@ -13,6 +14,7 @@ public class Resource {
     private Integer capacity;
     private String location;
     private String availabilityWindows;
+    @JsonProperty(defaultValue = "ACTIVE")
     private ResourceStatus status;
     private String description;
     private LocalDateTime createdAt;

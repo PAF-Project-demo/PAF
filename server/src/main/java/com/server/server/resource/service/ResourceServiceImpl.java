@@ -103,8 +103,8 @@ public class ResourceServiceImpl implements ResourceService {
         entity.setLocation(dto.getLocation());
         entity.setAvailabilityWindows(dto.getAvailabilityWindows());
         entity.setDescription(dto.getDescription());
-        if (dto.getStatus() != null) {
-             entity.setStatus(dto.getStatus());
+        if (dto.getStatus() != null && !dto.getStatus().isEmpty()) {
+             entity.setStatus(ResourceStatus.valueOf(dto.getStatus().toUpperCase()));
         }
     }
 
@@ -116,10 +116,10 @@ public class ResourceServiceImpl implements ResourceService {
         dto.setCapacity(entity.getCapacity());
         dto.setLocation(entity.getLocation());
         dto.setAvailabilityWindows(entity.getAvailabilityWindows());
-        dto.setStatus(entity.getStatus());
+        dto.setStatus(entity.getStatus() != null ? entity.getStatus().toString() : "ACTIVE");
         dto.setDescription(entity.getDescription());
-        dto.setCreatedAt(entity.getCreatedAt());
-        dto.setUpdatedAt(entity.getUpdatedAt());
+        dto.setCreatedAt(entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : "");
+        dto.setUpdatedAt(entity.getUpdatedAt() != null ? entity.getUpdatedAt().toString() : "");
         return dto;
     }
 }

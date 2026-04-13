@@ -37,13 +37,20 @@ export const fetchResources = async (filters?: { type?: string; location?: strin
   const queryString = params.toString();
   const url = queryString ? `${API_BASE_URL}?${queryString}` : API_BASE_URL;
 
+  console.log("Fetching resources from:", url);
+
   const response = await fetch(url, {
     method: "GET",
     headers: getHeaders(),
+    credentials: "include",
   });
   
+  console.log("Resource fetch response status:", response.status);
+
   if (!response.ok) {
-    throw new Error("Failed to fetch resources");
+    const errorBody = await response.text();
+    console.error("Fetch resources error:", errorBody);
+    throw new Error(`Failed to fetch resources: ${response.status} ${response.statusText}`);
   }
   
   return await response.json() as Resource[];
@@ -53,6 +60,7 @@ export const getResource = async (id: string) => {
   const response = await fetch(`${API_BASE_URL}/${id}`, {
     method: "GET",
     headers: getHeaders(),
+    credentials: "include",
   });
   
   if (!response.ok) {
@@ -66,6 +74,7 @@ export const createResource = async (resource: Resource) => {
   const response = await fetch(API_BASE_URL, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(resource),
   });
   
@@ -80,6 +89,7 @@ export const updateResource = async (id: string, resource: Resource) => {
   const response = await fetch(`${API_BASE_URL}/${id}`, {
     method: "PUT",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(resource),
   });
   
@@ -94,6 +104,7 @@ export const deleteResource = async (id: string) => {
   const response = await fetch(`${API_BASE_URL}/${id}`, {
     method: "DELETE",
     headers: getHeaders(),
+    credentials: "include",
   });
   
   if (!response.ok) {
@@ -105,6 +116,7 @@ export const updateResourceStatus = async (id: string, status: "ACTIVE" | "OUT_O
   const response = await fetch(`${API_BASE_URL}/${id}/status`, {
     method: "PATCH",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify({ status }),
   });
   

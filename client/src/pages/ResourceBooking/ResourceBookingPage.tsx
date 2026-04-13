@@ -3,6 +3,7 @@ import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import ComponentCard from "../../components/common/ComponentCard";
 import PageMeta from "../../components/common/PageMeta";
 import LoadingIndicator from "../../components/common/LoadingIndicator";
+import Button from "../../components/ui/button/Button";
 import { Resource, fetchResources } from "../../lib/resourceService";
 import { getStoredAuthSession, isAdminRole } from "../../lib/auth";
 import BookingForm from "./BookingForm";
@@ -21,21 +22,59 @@ export default function ResourceBookingPage() {
   const authSession = getStoredAuthSession();
   const isAdmin = isAdminRole(authSession?.role);
 
-  useEffect(() => {
-    const loadActiveResources = async () => {
-      try {
-        setIsLoading(true);
-        // Fetch all resources and filter for ACTIVE ones
-        const allResources = await fetchResources();
-        const activeResources = allResources.filter((r) => r.status === "ACTIVE");
-        setResources(activeResources);
-      } catch (err) {
-        setError("Failed to load resources");
-      } finally {
-        setIsLoading(false);
+  const loadActiveResources = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+      // Fetch all resources and filter for ACTIVE ones
+      const allResources = await fetchResources();
+      const activeResources = allResources.filter((r) => r.status === "ACTIVE");
+      setResources(activeResources);
+      
+      if (activeResources.length === 0) {
+        setError("No resources available. Create sample resources to get started.");
       }
-    };
+    } catch (err: any) {
+      console.error("Error loading resources:", err);
+      setError(err.message || "Failed to load resources. Please ensure you are logged in.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  const initializeSampleResources = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+      const response = await fetch("http://localhost:8081/api/resources/init-samples", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      
+      const responseData = await response.json();
+      console.log("Init resources response:", responseData);
+      
+      if (response.ok && responseData.success) {
+        // Wait a moment then reload
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await loadActiveResources();
+      } else {
+        console.log("Sample resources already exist or error occurred");
+        // Still try to load resources
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await loadActiveResources();
+      }
+    } catch (err: any) {
+      console.error("Failed to initialize resources:", err);
+      setError("Failed to create sample resources: " + (err.message || "Unknown error"));
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadActiveResources();
   }, []);
 
@@ -98,12 +137,26 @@ export default function ResourceBookingPage() {
           <ComponentCard title="Book a Resource" desc="Select a resource and create your booking">
             {isLoading ? (
               <LoadingIndicator label="Loading resources..." />
-            ) : error ? (
-              <div className="rounded-lg bg-error-50 p-4 text-error-700 dark:bg-error-950 dark:text-error-300">
-                {error}
-              </div>
             ) : (
-              <BookingForm resources={resources} />
+              <>
+                {error && (
+                  <div className="mb-6 space-y-4">
+                    <div className="rounded-lg bg-warning-50 p-4 text-warning-700 dark:bg-warning-950 dark:text-warning-300">
+                      <p className="font-medium">{error}</p>
+                      <p className="mt-2 text-sm">
+                        Click the button below to create sample resources, or go to <span className="font-semibold">Facilities & Assets</span> to add your own.
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={initializeSampleResources}
+                      className="w-full sm:w-auto"
+                    >
+                      Create Sample Resources
+                    </Button>
+                  </div>
+                )}
+                <BookingForm resources={resources} />
+              </>
             )}
           </ComponentCard>
         )}
