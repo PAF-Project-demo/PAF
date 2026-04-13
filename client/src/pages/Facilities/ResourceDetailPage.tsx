@@ -86,6 +86,11 @@ export default function ResourceDetailPage() {
             <Link to="/resources">
               <Button variant="outline">Back to List</Button>
             </Link>
+            {!isAdmin && (
+              <Button onClick={() => alert("Booking functionality coming soon!")}>
+                Book Resource
+              </Button>
+            )}
             {isAdmin && (
               <Link to={`/resources/${resource.id}/edit`}>
                 <Button>Edit Resource</Button>
