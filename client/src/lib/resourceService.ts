@@ -77,7 +77,6 @@ export const createResource = async (resource: Resource) => {
     headers: getHeaders(),
     credentials: "include",
     body: JSON.stringify(resource),
-    credentials: "include",
   });
   
   if (!response.ok) {
@@ -95,7 +94,6 @@ export const updateResource = async (id: string, resource: Resource) => {
     headers: getHeaders(),
     credentials: "include",
     body: JSON.stringify(resource),
-    credentials: "include",
   });
   
   if (!response.ok) {
@@ -125,7 +123,6 @@ export const updateResourceStatus = async (id: string, status: "ACTIVE" | "OUT_O
     headers: getHeaders(),
     credentials: "include",
     body: JSON.stringify({ status }),
-    credentials: "include",
   });
   
   if (!response.ok) {

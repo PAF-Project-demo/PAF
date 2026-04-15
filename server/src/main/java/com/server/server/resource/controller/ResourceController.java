@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -138,9 +139,9 @@ public class ResourceController {
         dto.setCapacity(capacity);
         dto.setLocation(location);
         dto.setDescription(description);
-        dto.setStatus("ACTIVE");
-        dto.setCreatedAt("");
-        dto.setUpdatedAt("");
+        dto.setStatus(ResourceStatus.ACTIVE);
+        dto.setCreatedAt(LocalDateTime.now());
+        dto.setUpdatedAt(LocalDateTime.now());
         return dto;
     }
 }
