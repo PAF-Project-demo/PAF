@@ -28,7 +28,7 @@ public class ResourceServiceImpl implements ResourceService {
         resource.setStatus(ResourceStatus.ACTIVE); // Default status
         resource.setCreatedAt(LocalDateTime.now());
         resource.setUpdatedAt(LocalDateTime.now());
-        
+
         Resource saved = resourceRepository.save(resource);
         return mapToDTO(saved);
     }
@@ -38,13 +38,15 @@ public class ResourceServiceImpl implements ResourceService {
         List<Resource> resources;
 
         if (type != null && location != null && capacity != null) {
-            resources = resourceRepository.findByTypeAndLocationContainingIgnoreCaseAndCapacityGreaterThanEqual(type, location, capacity);
+            resources = resourceRepository.findByTypeAndLocationContainingIgnoreCaseAndCapacityGreaterThanEqual(type,
+                    location, capacity);
         } else if (type != null && location != null) {
             resources = resourceRepository.findByTypeAndLocationContainingIgnoreCase(type, location);
         } else if (type != null && capacity != null) {
             resources = resourceRepository.findByTypeAndCapacityGreaterThanEqual(type, capacity);
         } else if (location != null && capacity != null) {
-            resources = resourceRepository.findByLocationContainingIgnoreCaseAndCapacityGreaterThanEqual(location, capacity);
+            resources = resourceRepository.findByLocationContainingIgnoreCaseAndCapacityGreaterThanEqual(location,
+                    capacity);
         } else if (type != null) {
             resources = resourceRepository.findByType(type);
         } else if (location != null) {
@@ -69,10 +71,10 @@ public class ResourceServiceImpl implements ResourceService {
     public ResourceDTO updateResource(String id, ResourceDTO resourceDTO) {
         Resource resource = resourceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found with id: " + id));
-        
+
         mapToEntity(resourceDTO, resource);
         resource.setUpdatedAt(LocalDateTime.now());
-        
+
         Resource updated = resourceRepository.save(resource);
         return mapToDTO(updated);
     }
@@ -88,10 +90,10 @@ public class ResourceServiceImpl implements ResourceService {
     public ResourceDTO updateResourceStatus(String id, ResourceStatus status) {
         Resource resource = resourceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found with id: " + id));
-        
+
         resource.setStatus(status);
         resource.setUpdatedAt(LocalDateTime.now());
-        
+
         Resource updated = resourceRepository.save(resource);
         return mapToDTO(updated);
     }
@@ -102,9 +104,9 @@ public class ResourceServiceImpl implements ResourceService {
         entity.setCapacity(dto.getCapacity());
         entity.setLocation(dto.getLocation());
         entity.setAvailabilityWindows(dto.getAvailabilityWindows());
-        entity.setDescription(dto.getDescription());
+        entity.setImageUrl(dto.getImageUrl());
         if (dto.getStatus() != null) {
-             entity.setStatus(dto.getStatus());
+            entity.setStatus(dto.getStatus());
         }
     }
 
@@ -117,7 +119,7 @@ public class ResourceServiceImpl implements ResourceService {
         dto.setLocation(entity.getLocation());
         dto.setAvailabilityWindows(entity.getAvailabilityWindows());
         dto.setStatus(entity.getStatus());
-        dto.setDescription(entity.getDescription());
+        dto.setImageUrl(entity.getImageUrl());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;

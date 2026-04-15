@@ -57,21 +57,40 @@ export default function ResourceDetailPage() {
             <span className="font-semibold text-gray-800 dark:text-white">Status:</span>
             <Badge size="sm" variant="solid" color={resource.status === "ACTIVE" ? "success" : "error"}>{resource.status}</Badge>
             {isAdmin && (
-               <Button size="sm" variant="outline" onClick={handleToggleStatus}>
-                 Toggle Status
-               </Button>
+              <Button size="sm" variant="outline" onClick={handleToggleStatus}>
+                Toggle Status
+              </Button>
             )}
           </div>
-          <p><span className="font-semibold dark:text-gray-300">Type:</span> {resource.type}</p>
-          <p><span className="font-semibold dark:text-gray-300">Location:</span> {resource.location}</p>
-          <p><span className="font-semibold dark:text-gray-300">Capacity:</span> {resource.capacity || "N/A"}</p>
-          <p><span className="font-semibold dark:text-gray-300">Availability:</span> {resource.availabilityWindows || "N/A"}</p>
-          <p><span className="font-semibold dark:text-gray-300">Description:</span> {resource.description || "N/A"}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <p><span className="font-semibold dark:text-gray-300">Type:</span> <span className="text-gray-600 dark:text-gray-400">{resource.type}</span></p>
+              <p><span className="font-semibold dark:text-gray-300">Location:</span> <span className="text-gray-600 dark:text-gray-400">{resource.location}</span></p>
+              <p><span className="font-semibold dark:text-gray-300">Capacity:</span> <span className="text-gray-600 dark:text-gray-400">{resource.capacity || "N/A"}</span></p>
+              <p><span className="font-semibold dark:text-gray-300">Availability:</span> <span className="text-gray-600 dark:text-gray-400">{resource.availabilityWindows || "N/A"}</span></p>
+            </div>
+            
+            {resource.imageUrl && (
+              <div className="flex justify-start md:justify-end">
+                <img 
+                  src={resource.imageUrl} 
+                  alt={resource.name} 
+                  className="max-h-56 max-w-full rounded-xl object-cover shadow-sm border border-gray-200 dark:border-gray-700" 
+                />
+              </div>
+            )}
+          </div>
+          {/* <p><span className="font-semibold dark:text-gray-300">Description:</span> {resource.description || "N/A"}</p> */}
 
           <div className="mt-6 flex gap-4">
             <Link to="/resources">
               <Button variant="outline">Back to List</Button>
             </Link>
+            {!isAdmin && (
+              <Button onClick={() => alert("Booking functionality coming soon!")}>
+                Book Resource
+              </Button>
+            )}
             {isAdmin && (
               <Link to={`/resources/${resource.id}/edit`}>
                 <Button>Edit Resource</Button>
