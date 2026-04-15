@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-ServerApplication",
+            "request": "launch",
+            "mainClass": "com.server.server.ServerApplication",
+            "projectName": "server",
+            "vmArgs": "-Xmx512m -Xms256m"
+        }
+    ]
+}

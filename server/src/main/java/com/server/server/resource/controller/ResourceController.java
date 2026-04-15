@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/resources")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class ResourceController {
 
     private final ResourceService resourceService;

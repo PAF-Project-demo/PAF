@@ -89,4 +89,11 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleInvalidBooking(InvalidBookingException exception) {
         return ResponseEntity.badRequest().body(new ApiError(exception.getMessage()));
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleGenericException(Exception exception) {
+        String cause = exception.getCause() != null ? exception.getCause().getMessage() : "";
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiError("Internal Error: " + exception.getMessage() + " | Cause: " + cause));
+    }
 }
