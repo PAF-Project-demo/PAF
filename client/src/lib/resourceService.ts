@@ -10,6 +10,7 @@ export interface Resource {
   location: string;
   availabilityWindows?: string;
   status?: "ACTIVE" | "OUT_OF_SERVICE";
+  description?: string;
   imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
