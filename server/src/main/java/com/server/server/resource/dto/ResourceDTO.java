@@ -5,6 +5,8 @@ import com.server.server.resource.entity.ResourceType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ResourceDTO {
     private String id;
@@ -25,6 +27,8 @@ public class ResourceDTO {
     private String imageUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<ReviewDTO> reviews = new ArrayList<>();
+    private Double averageRating;
 
     public String getId() {
         return id;
@@ -104,5 +108,21 @@ public class ResourceDTO {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public List<ReviewDTO> getReviews() {
+        return reviews;
+    }
+
+    public void setReviews(List<ReviewDTO> reviews) {
+        this.reviews = reviews;
+    }
+
+    public Double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Double averageRating) {
+        this.averageRating = averageRating;
     }
 }
