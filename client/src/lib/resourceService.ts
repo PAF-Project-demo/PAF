@@ -1,4 +1,4 @@
-import { getStoredAuthSession, authApiBaseUrl } from "./auth";
+import { getStoredAuthSession, authApiBaseUrl, clearAuthSession } from "./auth";
 
 const API_BASE_URL = `${authApiBaseUrl}/api/resources`;
 
@@ -10,7 +10,7 @@ export interface Resource {
   location: string;
   availabilityWindows?: string;
   status?: "ACTIVE" | "OUT_OF_SERVICE";
-  description?: string;
+  imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -40,6 +40,7 @@ export const fetchResources = async (filters?: { type?: string; location?: strin
   const response = await fetch(url, {
     method: "GET",
     headers: getHeaders(),
+    credentials: "include",
   });
   
   if (!response.ok) {
@@ -53,6 +54,7 @@ export const getResource = async (id: string) => {
   const response = await fetch(`${API_BASE_URL}/${id}`, {
     method: "GET",
     headers: getHeaders(),
+    credentials: "include",
   });
   
   if (!response.ok) {
@@ -67,10 +69,13 @@ export const createResource = async (resource: Resource) => {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify(resource),
+    credentials: "include",
   });
   
   if (!response.ok) {
-    throw new Error("Failed to create resource");
+    if (response.status === 401 || response.status === 403) clearAuthSession();
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Failed to create resource. Server responded with: ${response.status} ${errorText}`);
   }
   
   return await response.json() as Resource;
@@ -81,10 +86,13 @@ export const updateResource = async (id: string, resource: Resource) => {
     method: "PUT",
     headers: getHeaders(),
     body: JSON.stringify(resource),
+    credentials: "include",
   });
   
   if (!response.ok) {
-    throw new Error("Failed to update resource");
+    if (response.status === 401 || response.status === 403) clearAuthSession();
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Failed to update resource. Server responded with: ${response.status} ${errorText}`);
   }
   
   return await response.json() as Resource;
@@ -94,6 +102,7 @@ export const deleteResource = async (id: string) => {
   const response = await fetch(`${API_BASE_URL}/${id}`, {
     method: "DELETE",
     headers: getHeaders(),
+    credentials: "include",
   });
   
   if (!response.ok) {
@@ -106,6 +115,7 @@ export const updateResourceStatus = async (id: string, status: "ACTIVE" | "OUT_O
     method: "PATCH",
     headers: getHeaders(),
     body: JSON.stringify({ status }),
+    credentials: "include",
   });
   
   if (!response.ok) {

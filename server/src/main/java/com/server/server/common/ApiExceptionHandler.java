@@ -71,4 +71,11 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleResourceNotFound(ResourceNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(exception.getMessage()));
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleGenericException(Exception exception) {
+        String cause = exception.getCause() != null ? exception.getCause().getMessage() : "";
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiError("Internal Error: " + exception.getMessage() + " | Cause: " + cause));
+    }
 }
