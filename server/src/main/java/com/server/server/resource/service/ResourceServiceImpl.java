@@ -11,14 +11,21 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.server.server.resource.dto.ReviewDTO;
+import com.server.server.resource.entity.Review;
+import java.util.ArrayList;
+import com.server.server.auth.entity.User;
+import com.server.server.auth.repository.UserRepository;
 
 @Service
 public class ResourceServiceImpl implements ResourceService {
 
     private final ResourceRepository resourceRepository;
+    private final UserRepository userRepository;
 
-    public ResourceServiceImpl(ResourceRepository resourceRepository) {
+    public ResourceServiceImpl(ResourceRepository resourceRepository, UserRepository userRepository) {
         this.resourceRepository = resourceRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -98,6 +105,55 @@ public class ResourceServiceImpl implements ResourceService {
         return mapToDTO(updated);
     }
 
+    @Override
+    public ResourceDTO addReviewToResource(String resourceId, ReviewDTO reviewDTO, String userId) {
+        Resource resource = resourceRepository.findById(resourceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found with id: " + resourceId));
+
+        if (resource.getReviews() == null) {
+            resource.setReviews(new ArrayList<>());
+        }
+
+        String actualUserName = "Anonymous User";
+        if (userId != null) {
+            actualUserName = userRepository.findById(userId)
+                    .map(User::getDisplayName)
+                    .filter(name -> name != null && !name.isEmpty())
+                    .orElse("Student");
+        }
+
+        Review review = new Review();
+        review.setUserId(userId);
+        review.setUserName(actualUserName);
+        review.setRating(reviewDTO.getRating());
+        review.setComment(reviewDTO.getComment());
+        review.setCreatedAt(LocalDateTime.now());
+
+        resource.getReviews().add(review);
+        Resource updated = resourceRepository.save(resource);
+        return mapToDTO(updated);
+    }
+
+    @Override
+    public ResourceDTO deleteReviewFromResource(String resourceId, String reviewId, String userId) {
+        Resource resource = resourceRepository.findById(resourceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found with id: " + resourceId));
+
+        if (resource.getReviews() != null) {
+            boolean removed = resource.getReviews().removeIf(r -> 
+                r.getId().equals(reviewId) && r.getUserId().equals(userId)
+            );
+            
+            if (removed) {
+                Resource updated = resourceRepository.save(resource);
+                return mapToDTO(updated);
+            }
+        }
+        
+        // If not removed (not found, or user didn't own it), just return untouched. Alternatively, throw exception.
+        return mapToDTO(resource);
+    }
+
     private void mapToEntity(ResourceDTO dto, Resource entity) {
         entity.setName(dto.getName());
         entity.setType(dto.getType());
@@ -122,6 +178,32 @@ public class ResourceServiceImpl implements ResourceService {
         dto.setImageUrl(entity.getImageUrl());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
+
+        if (entity.getReviews() != null) {
+            List<ReviewDTO> reviewDTOs = entity.getReviews().stream().map(review -> {
+                ReviewDTO rDTO = new ReviewDTO();
+                rDTO.setId(review.getId());
+                rDTO.setUserId(review.getUserId());
+                rDTO.setUserName(review.getUserName() != null ? review.getUserName() : "Anonymous User");
+                rDTO.setRating(review.getRating());
+                rDTO.setComment(review.getComment());
+                rDTO.setCreatedAt(review.getCreatedAt());
+                return rDTO;
+            }).collect(Collectors.toList());
+            dto.setReviews(reviewDTOs);
+
+            if (!reviewDTOs.isEmpty()) {
+                double avg = reviewDTOs.stream().mapToInt(ReviewDTO::getRating).average().orElse(0.0);
+                // Round to 1 decimal place
+                dto.setAverageRating(Math.round(avg * 10.0) / 10.0);
+            } else {
+                dto.setAverageRating(0.0);
+            }
+        } else {
+            dto.setReviews(new ArrayList<>());
+            dto.setAverageRating(0.0);
+        }
+
         return dto;
     }
 }

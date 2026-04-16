@@ -12,4 +12,6 @@ public interface ResourceService {
     ResourceDTO updateResource(String id, ResourceDTO resourceDTO);
     void deleteResource(String id);
     ResourceDTO updateResourceStatus(String id, ResourceStatus status);
+    ResourceDTO addReviewToResource(String resourceId, com.server.server.resource.dto.ReviewDTO reviewDTO, String userId);
+    ResourceDTO deleteReviewFromResource(String resourceId, String reviewId, String userId);
 }
