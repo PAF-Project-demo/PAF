@@ -11,7 +11,6 @@ import {
   STUDENT_TICKET_CATEGORIES,
 } from "./catalog";
 import { initialMockTicketingData, type TicketingMockDatabase } from "./mockData";
-import { determineTicketPriority } from "./priority";
 import type {
   CreateTicketInput,
   DashboardSummary,
@@ -263,6 +262,7 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
         title: input.title.trim(),
         description: input.description.trim(),
         type: input.type,
+        priority: input.priority,
         category: input.category.trim(),
         location: {
           ...input.location,
@@ -290,16 +290,10 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
   const db = readMockDb();
   const currentUser = getCurrentTicketUser(db);
   const now = new Date();
-  const initialPriority = determineTicketPriority({
-    title: input.title,
-    description: input.description,
-    type: input.type,
-    category: input.category,
-  });
   const resolvedSlaHours =
     input.slaHours && input.slaHours > 0
       ? input.slaHours
-      : { LOW: 72, MEDIUM: 24, HIGH: 8, CRITICAL: 4 }[initialPriority];
+      : { LOW: 72, MEDIUM: 24, HIGH: 8, CRITICAL: 4 }[input.priority];
 
   const attachments =
     input.attachments?.map((file) => ({
@@ -323,7 +317,7 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
     title: input.title.trim(),
     description: input.description.trim(),
     type: input.type,
-    priority: initialPriority,
+    priority: input.priority,
     category: normalizeTicketCategory(input.category.trim()),
     status: "OPEN",
     location: {
@@ -341,7 +335,7 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
       {
         id: uid("activity"),
         action: "TICKET_CREATED",
-        message: `Ticket created with ${initialPriority} priority.`,
+        message: `Ticket created with ${input.priority} priority.`,
         createdAt: now.toISOString(),
         actor: {
           id: currentUser.id,

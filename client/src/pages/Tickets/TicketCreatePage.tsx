@@ -12,6 +12,7 @@ import { createTicket, fetchTicketMeta } from "../../lib/ticketing/ticketService
 import type {
   CreateTicketInput,
   TicketMeta,
+  TicketPriority,
   TicketType,
 } from "../../lib/ticketing/types";
 
@@ -24,8 +25,16 @@ const textAreaClassName =
 type CreateTicketFormErrors = {
   title?: string;
   description?: string;
+  priority?: string;
   category?: string;
   building?: string;
+};
+
+const priorityLabels: Record<TicketPriority, string> = {
+  LOW: "Low",
+  MEDIUM: "Medium",
+  HIGH: "High",
+  CRITICAL: "Critical",
 };
 
 const getFieldClassName = (hasError?: boolean) =>
@@ -46,6 +55,7 @@ export default function TicketCreatePage() {
     title: "",
     description: "",
     type: "MAINTENANCE",
+    priority: "MEDIUM",
     category: "",
     location: {
       building: "",
@@ -138,6 +148,10 @@ export default function TicketCreatePage() {
       nextErrors.description = "Description is required.";
     }
 
+    if (!form.priority) {
+      nextErrors.priority = "Please select a priority.";
+    }
+
     if (!form.category.trim()) {
       nextErrors.category = "Please select a category.";
     }
@@ -205,7 +219,7 @@ export default function TicketCreatePage() {
 
         <ComponentCard
           title="New Maintenance / Incident Ticket"
-          desc="Students submit the issue details here. The system automatically evaluates urgency and assigns a priority for staff follow-up."
+          desc="Students submit the issue details here and choose a simple priority level for staff follow-up."
         >
           <form className="space-y-6" onSubmit={handleSubmit} noValidate>
             {submitError ? (
@@ -288,12 +302,38 @@ export default function TicketCreatePage() {
                 ) : null}
               </div>
 
-              <div className="lg:col-span-2">
-                <div className="rounded-2xl border border-brand-200 bg-brand-50 px-4 py-4 text-sm text-brand-700 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-200">
-                  Priority is assigned automatically after submission using the ticket
-                  type, category, and issue description. Technicians and admins can
-                  review it later if needed.
-                </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Priority
+                </label>
+                <select
+                  className={getFieldClassName(Boolean(errors.priority))}
+                  value={form.priority}
+                  onChange={(event) => {
+                    setErrors((current) => ({ ...current, priority: undefined }));
+                    setSubmitError("");
+                    setForm((current) => ({
+                      ...current,
+                      priority: event.target.value as TicketPriority,
+                    }));
+                  }}
+                  aria-invalid={Boolean(errors.priority)}
+                >
+                  {meta?.priorities.map((priority) => (
+                    <option key={priority} value={priority}>
+                      {priorityLabels[priority]}
+                    </option>
+                  ))}
+                </select>
+                {errors.priority ? (
+                  <p className="mt-2 text-sm text-error-600 dark:text-error-400">
+                    {errors.priority}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="rounded-2xl border border-brand-200 bg-brand-50 px-4 py-4 text-sm text-brand-700 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-200 lg:col-span-2">
+                Choose the urgency that best matches your issue. Technicians and admins can still review and adjust the priority later if needed.
               </div>
 
               <div className="lg:col-span-2">

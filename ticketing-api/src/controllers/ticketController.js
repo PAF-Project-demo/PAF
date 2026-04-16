@@ -1,7 +1,6 @@
 import { Ticket } from "../models/Ticket.js";
 import { User } from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { determinePriority } from "../utils/determinePriority.js";
 import { createHttpError } from "../utils/httpError.js";
 import { buildTicketId } from "../utils/generateTicketId.js";
 
@@ -178,6 +177,7 @@ export const createTicket = asyncHandler(async (req, res) => {
     title,
     description,
     type,
+    priority,
     category,
     location,
     slaHours,
@@ -187,31 +187,30 @@ export const createTicket = asyncHandler(async (req, res) => {
     !title?.trim() ||
     !description?.trim() ||
     !type ||
+    !priority ||
     !category?.trim() ||
     !location?.building?.trim()
   ) {
     throw createHttpError(
       400,
-      "title, description, type, category, and location.building are required."
+      "title, description, type, priority, category, and location.building are required."
     );
   }
 
-  const initialPriority = determinePriority({
-    title,
-    description,
-    type,
-    category,
-  });
+  if (!Object.keys(prioritySlaMap).includes(priority)) {
+    throw createHttpError(400, "priority must be one of LOW, MEDIUM, HIGH, or CRITICAL.");
+  }
+
   const finalSlaHours =
     req.user.role === "USER"
-      ? resolveSlaHours(initialPriority)
-      : resolveSlaHours(initialPriority, slaHours);
+      ? resolveSlaHours(priority)
+      : resolveSlaHours(priority, slaHours);
   const ticket = await Ticket.create({
     ticketId: await nextTicketId(),
     title: title.trim(),
     description: description.trim(),
     type,
-    priority: initialPriority,
+    priority,
     category: category.trim(),
     status: "OPEN",
     location: {
@@ -228,10 +227,10 @@ export const createTicket = asyncHandler(async (req, res) => {
     activity: [
       {
         action: "TICKET_CREATED",
-        message: `Ticket created with ${initialPriority} priority.`,
+        message: `Ticket created with ${priority} priority.`,
         actor: actorFromUser(req.user),
         meta: {
-          priority: initialPriority,
+          priority,
           category,
           type,
         },

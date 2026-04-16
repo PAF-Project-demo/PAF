@@ -132,6 +132,7 @@ export interface CreateTicketInput {
   title: string;
   description: string;
   type: TicketType;
+  priority: TicketPriority;
   category: string;
   status?: TicketStatus;
   location: TicketLocation;
