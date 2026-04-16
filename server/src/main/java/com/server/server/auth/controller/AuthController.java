@@ -3,6 +3,7 @@ package com.server.server.auth.controller;
 import com.server.server.auth.dto.AuthResponse;
 import com.server.server.auth.dto.AuthConfigResponse;
 import com.server.server.auth.dto.AuthResponses;
+import com.server.server.auth.dto.CurrentUserProfileResponse;
 import com.server.server.auth.dto.GoogleSignInRequest;
 import com.server.server.auth.dto.SignInRequest;
 import com.server.server.auth.dto.SignUpRequest;
@@ -253,6 +254,14 @@ public class AuthController {
         return ResponseEntity.ok(AuthResponses.fromUser(
                 userAccessService.getAuthenticatedUser(authentication.getName()),
                 "Authenticated session restored."));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/profile")
+    public ResponseEntity<CurrentUserProfileResponse> getCurrentUserProfile(
+            Authentication authentication) {
+        return ResponseEntity.ok(AuthResponses.profileFromUser(
+                userAccessService.getAuthenticatedUser(authentication.getName())));
     }
 
     @PreAuthorize("isAuthenticated()")

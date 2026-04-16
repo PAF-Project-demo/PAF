@@ -101,7 +101,9 @@ export default function ResourceDetailPage() {
               {resource.averageRating !== undefined && resource.averageRating > 0 && (
                 <p>
                   <span className="font-semibold dark:text-gray-300">Avg Rating:</span> 
-                  <Badge className="ml-2" color="warning" size="sm">★ {resource.averageRating.toFixed(1)} / 5.0</Badge>
+                  <span className="ml-2 inline-flex align-middle">
+                    <Badge color="warning" size="sm">★ {resource.averageRating.toFixed(1)} / 5.0</Badge>
+                  </span>
                 </p>
               )}
             </div>
