@@ -119,6 +119,7 @@ export default function ActivityAuditTable() {
     []
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState("");
 
   // Filters
@@ -272,6 +273,25 @@ export default function ActivityAuditTable() {
   const hasActiveFilters = Boolean(
     eventTypeFilter || actorSearch.trim() || affectedUserSearch.trim() || dateFrom || dateTo
   );
+  const showLoadingState = isLoading || isFiltering;
+  const loadingAuditLabel = hasActiveFilters
+    ? "Filtering audit log"
+    : "Loading audit log";
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    setIsFiltering(true);
+    const timeoutId = window.setTimeout(() => {
+      setIsFiltering(false);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isLoading, eventTypeFilter, actorSearch, affectedUserSearch, dateFrom, dateTo]);
 
   const filteredItems = items.filter((item) => {
     // Event type filter
@@ -362,15 +382,16 @@ export default function ActivityAuditTable() {
   };
 
   const renderTableBody = () => {
-    if (isLoading) {
+    if (showLoadingState) {
       return (
         <TableRow>
           <TableCell colSpan={tableColumnCount} className="px-5 py-10">
             <LoadingIndicator
               className="mx-auto"
               layout="stacked"
-              label="Loading audit log"
-              description="Fetching the latest activity history."
+              size="md"
+              label={loadingAuditLabel}
+              description="Please wait while the latest activity history is prepared."
             />
           </TableCell>
         </TableRow>
@@ -494,7 +515,7 @@ export default function ActivityAuditTable() {
   };
 
   const renderPagination = () => {
-    if (isLoading || error || filteredItems.length === 0) {
+    if (showLoadingState || error || filteredItems.length === 0) {
       return null;
     }
 
@@ -790,8 +811,10 @@ export default function ActivityAuditTable() {
         </div>
 
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          {isLoading
-            ? "Loading the most recent audit history."
+          {showLoadingState
+            ? hasActiveFilters
+              ? "Applying your filters to the audit history."
+              : "Loading the most recent audit history."
             : error
             ? "Audit history is unavailable right now."
             : `Loaded ${items.length} audit event${items.length === 1 ? "" : "s"}.${
