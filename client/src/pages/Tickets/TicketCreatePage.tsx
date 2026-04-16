@@ -10,7 +10,6 @@ import { createTicket, fetchTicketMeta } from "../../lib/ticketing/ticketService
 import type {
   CreateTicketInput,
   TicketMeta,
-  TicketPriority,
   TicketType,
 } from "../../lib/ticketing/types";
 
@@ -52,6 +51,18 @@ export default function TicketCreatePage() {
 
     void load();
   }, []);
+
+  useEffect(() => {
+    if (form.type !== "INCIDENT" && form.location.note) {
+      setForm((current) => ({
+        ...current,
+        location: {
+          ...current.location,
+          note: "",
+        },
+      }));
+    }
+  }, [form.type, form.location.note]);
 
   const isValid = useMemo(() => {
     return (
@@ -111,7 +122,7 @@ export default function TicketCreatePage() {
 
         <ComponentCard
           title="New Maintenance / Incident Ticket"
-          desc="Capture the issue clearly so the right technician can triage it quickly."
+          desc="Students can submit a ticket here and then track progress while technicians and admins handle workflow updates."
         >
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <div className="lg:col-span-2">
@@ -152,28 +163,6 @@ export default function TicketCreatePage() {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Priority
-              </label>
-              <select
-                className={inputClassName}
-                value={form.priority}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    priority: event.target.value as TicketPriority,
-                  }))
-                }
-              >
-                {meta?.priorities.map((priority) => (
-                  <option key={priority} value={priority}>
-                    {priority}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Category
               </label>
               <select
@@ -189,25 +178,6 @@ export default function TicketCreatePage() {
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                SLA target in hours
-              </label>
-              <input
-                type="number"
-                min={1}
-                className={inputClassName}
-                value={form.slaHours ?? ""}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    slaHours: event.target.value ? Number(event.target.value) : undefined,
-                  }))
-                }
-                placeholder="Optional custom SLA"
-              />
             </div>
 
             <div className="lg:col-span-2">
@@ -233,39 +203,19 @@ export default function TicketCreatePage() {
                 className={inputClassName}
                 value={form.location.building}
                 onChange={(event) => updateLocation("building", event.target.value)}
+                placeholder="Building or main area"
               />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Campus
-              </label>
-              <input
-                className={inputClassName}
-                value={form.location.campus ?? ""}
-                onChange={(event) => updateLocation("campus", event.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Floor
-              </label>
-              <input
-                className={inputClassName}
-                value={form.location.floor ?? ""}
-                onChange={(event) => updateLocation("floor", event.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Room
+                Room / Area
               </label>
               <input
                 className={inputClassName}
                 value={form.location.room ?? ""}
                 onChange={(event) => updateLocation("room", event.target.value)}
+                placeholder="Optional room, lab, or nearby area"
               />
             </div>
 
@@ -277,9 +227,19 @@ export default function TicketCreatePage() {
                 rows={3}
                 className={textAreaClassName}
                 value={form.location.note ?? ""}
+                disabled={form.type !== "INCIDENT"}
                 onChange={(event) => updateLocation("note", event.target.value)}
-                placeholder="Landmarks, access notes, or safety warnings"
+                placeholder={
+                  form.type === "INCIDENT"
+                    ? "Add landmarks, safety concerns, or incident-specific details"
+                    : "Available only for incidents"
+                }
               />
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {form.type === "INCIDENT"
+                  ? "Use this for incident-specific safety or access notes."
+                  : "Switch the ticket type to Incident if extra location context is needed."}
+              </p>
             </div>
 
             <div className="lg:col-span-2">

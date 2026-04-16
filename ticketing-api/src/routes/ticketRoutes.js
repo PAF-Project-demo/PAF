@@ -20,7 +20,7 @@ router.get("/meta", getTicketMeta);
 router.get("/", listTickets);
 router.post("/", createTicket);
 router.get("/:id", getTicketById);
-router.put("/:id", updateTicket);
+router.put("/:id", authorize("ADMIN", "TECHNICIAN"), updateTicket);
 router.delete("/:id", authorize("ADMIN"), deleteTicket);
 router.patch("/:id/assign", authorize("ADMIN"), assignTechnician);
 router.post("/:id/comments", addComment);

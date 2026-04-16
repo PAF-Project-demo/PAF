@@ -113,7 +113,7 @@ export const initialMockTicketingData: TicketingMockDatabase = {
         "Cooling stopped in the afternoon and students are reporting discomfort in the quiet study zone.",
       type: "MAINTENANCE",
       priority: "HIGH",
-      category: "HVAC",
+      category: "Air Conditioning",
       status: "IN_PROGRESS",
       location: {
         building: "Learning Commons",
@@ -145,7 +145,7 @@ export const initialMockTicketingData: TicketingMockDatabase = {
       description: "Leak continues after rain and equipment has been powered down.",
       type: "INCIDENT",
       priority: "CRITICAL",
-      category: "Plumbing",
+      category: "Water / Plumbing",
       status: "OPEN",
       location: {
         building: "Science Block",
@@ -171,7 +171,7 @@ export const initialMockTicketingData: TicketingMockDatabase = {
       description: "Projector brightness is too low during lectures.",
       type: "MAINTENANCE",
       priority: "MEDIUM",
-      category: "AV Equipment",
+      category: "Classroom Equipment",
       status: "RESOLVED",
       location: {
         building: "Innovation Center",
@@ -203,7 +203,7 @@ export const initialMockTicketingData: TicketingMockDatabase = {
       description: "Staff cannot access shared drives or the admissions CRM.",
       type: "INCIDENT",
       priority: "HIGH",
-      category: "Networking",
+      category: "Internet / Wi-Fi",
       status: "ON_HOLD",
       location: {
         building: "Admin Block",
@@ -234,7 +234,7 @@ export const initialMockTicketingData: TicketingMockDatabase = {
       description: "Staff access is delayed because the card reader is not responding.",
       type: "INCIDENT",
       priority: "MEDIUM",
-      category: "Access Control",
+      category: "Access / Security",
       status: "CLOSED",
       location: {
         building: "West Gate",
@@ -261,7 +261,7 @@ export const initialMockTicketingData: TicketingMockDatabase = {
       description: "Dust and debris remain after cable trunking replacement.",
       type: "MAINTENANCE",
       priority: "LOW",
-      category: "Cleaning",
+      category: "Cleaning / Housekeeping",
       status: "OPEN",
       location: {
         building: "Lecture Hall Complex",

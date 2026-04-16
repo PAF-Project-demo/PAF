@@ -3,8 +3,13 @@ import {
   applyTicketFilters,
   buildDashboardSummary,
   buildReports,
+  canManageTickets,
   isTicketOverdue,
 } from "./helpers";
+import {
+  normalizeTicketCategory,
+  STUDENT_TICKET_CATEGORIES,
+} from "./catalog";
 import { initialMockTicketingData, type TicketingMockDatabase } from "./mockData";
 import type {
   CreateTicketInput,
@@ -71,6 +76,7 @@ function getCurrentTicketUser(db: TicketingMockDatabase): TicketUser {
 function normalizeTickets(tickets: TicketRecord[]) {
   return tickets.map((ticket) => ({
     ...ticket,
+    category: normalizeTicketCategory(ticket.category),
     overdue: isTicketOverdue(ticket),
   }));
 }
@@ -117,7 +123,7 @@ function buildMeta(db: TicketingMockDatabase): TicketMeta {
     types: ["MAINTENANCE", "INCIDENT"],
     priorities: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
     statuses: ["OPEN", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "CLOSED", "CANCELLED"],
-    categories: Array.from(new Set(db.tickets.map((ticket) => ticket.category))).sort(),
+    categories: [...STUDENT_TICKET_CATEGORIES],
     technicians: db.users.filter((user) => user.role === "TECHNICIAN" || user.role === "ADMIN"),
   };
 }
@@ -135,6 +141,12 @@ function accessScopeTickets(db: TicketingMockDatabase) {
   }
 
   return db.tickets;
+}
+
+function assertWorkflowPermission(role?: string | null) {
+  if (!canManageTickets(role)) {
+    throw new Error("Only technicians and admins can update ticket workflow.");
+  }
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -264,10 +276,12 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
   const db = readMockDb();
   const currentUser = getCurrentTicketUser(db);
   const now = new Date();
+  const isStudent = currentUser.role === "USER";
+  const initialPriority = isStudent ? "MEDIUM" : input.priority;
   const resolvedSlaHours =
     input.slaHours && input.slaHours > 0
       ? input.slaHours
-      : { LOW: 72, MEDIUM: 24, HIGH: 8, CRITICAL: 4 }[input.priority];
+      : { LOW: 72, MEDIUM: 24, HIGH: 8, CRITICAL: 4 }[initialPriority];
 
   const attachments =
     input.attachments?.map((file) => ({
@@ -291,10 +305,13 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
     title: input.title.trim(),
     description: input.description.trim(),
     type: input.type,
-    priority: input.priority,
-    category: input.category.trim(),
-    status: input.status ?? "OPEN",
-    location: input.location,
+    priority: initialPriority,
+    category: normalizeTicketCategory(input.category.trim()),
+    status: "OPEN",
+    location: {
+      ...input.location,
+      note: input.type === "INCIDENT" ? input.location.note : "",
+    },
     reporter: currentUser,
     assignedTechnician: null,
     slaHours: resolvedSlaHours,
@@ -338,24 +355,43 @@ export async function updateTicket(ticketId: string, input: UpdateTicketInput) {
 
   const db = readMockDb();
   const currentUser = getCurrentTicketUser(db);
+  assertWorkflowPermission(currentUser.role);
   const ticketIndex = db.tickets.findIndex((ticket) => ticket.id === ticketId);
 
   if (ticketIndex < 0) {
     throw new Error("Ticket not found");
   }
 
+  const previous = db.tickets[ticketIndex];
   const updated = {
-    ...db.tickets[ticketIndex],
+    ...previous,
     ...input,
     updatedAt: new Date().toISOString(),
   } satisfies TicketRecord;
+
+  if (input.status === "RESOLVED" && previous.status !== "RESOLVED") {
+    updated.resolvedAt = updated.updatedAt;
+  }
+
+  if (input.status === "CLOSED" && previous.status !== "CLOSED") {
+    updated.closedAt = updated.updatedAt;
+  }
+
+  if (input.status && !["RESOLVED", "CLOSED"].includes(input.status)) {
+    updated.closedAt = null;
+    if (input.status !== "RESOLVED") {
+      updated.resolvedAt = null;
+    }
+  }
 
   updated.overdue = isTicketOverdue(updated);
   updated.activity = [
     {
       id: uid("activity"),
-      action: "TICKET_UPDATED",
-      message: "Ticket updated.",
+      action: input.status ? "STATUS_CHANGED" : "TICKET_UPDATED",
+      message: input.status
+        ? `Ticket moved to ${input.status.replace(/_/g, " ")}.`
+        : "Ticket updated.",
       createdAt: updated.updatedAt,
       actor: {
         id: currentUser.id,
@@ -384,6 +420,10 @@ export async function assignTechnician(ticketId: string, technicianId: string) {
   }
 
   const db = readMockDb();
+  const currentUser = getCurrentTicketUser(db);
+  if (currentUser.role !== "ADMIN") {
+    throw new Error("Only admins can assign technicians.");
+  }
   const technician = db.users.find((user) => user.id === technicianId);
   if (!technician) {
     throw new Error("Technician not found");

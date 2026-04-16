@@ -32,7 +32,7 @@ export const seedTicketBlueprints = [
       "Cooling stopped at 10:15 AM and the temperature is rising quickly in the quiet study section.",
     type: "MAINTENANCE",
     priority: "HIGH",
-    category: "HVAC",
+    category: "Air Conditioning",
     status: "IN_PROGRESS",
     location: {
       building: "Learning Commons",
@@ -54,7 +54,7 @@ export const seedTicketBlueprints = [
       "Steady drip observed over bench C3 after rainfall. Equipment has been powered down.",
     type: "INCIDENT",
     priority: "CRITICAL",
-    category: "Plumbing",
+    category: "Water / Plumbing",
     status: "OPEN",
     location: {
       building: "Science Block",
@@ -72,7 +72,7 @@ export const seedTicketBlueprints = [
       "Projector brightness is too low during presentations and likely needs a lamp replacement.",
     type: "MAINTENANCE",
     priority: "MEDIUM",
-    category: "AV Equipment",
+    category: "Classroom Equipment",
     status: "RESOLVED",
     location: {
       building: "Innovation Center",

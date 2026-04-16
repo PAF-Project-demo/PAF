@@ -35,6 +35,8 @@ export default function TicketDetailsPage() {
   const [ticket, setTicket] = useState<TicketRecord | null>(null);
   const [meta, setMeta] = useState<TicketMeta | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingWorkflow, setIsSavingWorkflow] = useState(false);
+  const [workflowMessage, setWorkflowMessage] = useState("");
   const [status, setStatus] = useState<TicketStatus>("OPEN");
   const [priority, setPriority] = useState<TicketPriority>("MEDIUM");
   const [technicianId, setTechnicianId] = useState("");
@@ -42,6 +44,7 @@ export default function TicketDetailsPage() {
 
   const canManage = useMemo(() => canManageTickets(currentRole), [currentRole]);
   const isAdmin = currentRole === "ADMIN";
+  const isStudent = !canManage;
 
   const loadTicket = async () => {
     setIsLoading(true);
@@ -80,13 +83,32 @@ export default function TicketDetailsPage() {
   }
 
   const handleUpdate = async () => {
-    let nextTicket = await updateTicket(ticket.id, { status, priority });
-
-    if (isAdmin && technicianId && technicianId !== ticket.assignedTechnician?.id) {
-      nextTicket = await assignTechnician(ticket.id, technicianId);
+    if (!canManage) {
+      return;
     }
 
-    setTicket(nextTicket);
+    setIsSavingWorkflow(true);
+    setWorkflowMessage("");
+
+    try {
+      let nextTicket = await updateTicket(ticket.id, { status, priority });
+
+      if (isAdmin && technicianId && technicianId !== ticket.assignedTechnician?.id) {
+        nextTicket = await assignTechnician(ticket.id, technicianId);
+      }
+
+      setTicket(nextTicket);
+      setStatus(nextTicket.status);
+      setPriority(nextTicket.priority);
+      setTechnicianId(nextTicket.assignedTechnician?.id ?? "");
+      setWorkflowMessage("Workflow updated successfully.");
+    } catch (error) {
+      setWorkflowMessage(
+        error instanceof Error ? error.message : "Unable to update workflow right now."
+      );
+    } finally {
+      setIsSavingWorkflow(false);
+    }
   };
 
   const handleUpload = async (files: File[]) => {
@@ -188,67 +210,135 @@ export default function TicketDetailsPage() {
         </div>
 
         <div className="space-y-6">
-          <ComponentCard title="Workflow Controls" desc="Assignment, priority, status, and file uploads.">
-            <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Status
-                </label>
-                <select
-                  className={fieldClassName}
-                  value={status}
-                  disabled={!canManage}
-                  onChange={(event) => setStatus(event.target.value as TicketStatus)}
-                >
-                  {getAvailableStatuses().map((item) => (
-                    <option key={item} value={item}>
-                      {item.replace(/_/g, " ")}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <ComponentCard
+            title={isStudent ? "Progress Tracking" : "Workflow Controls"}
+            desc={
+              isStudent
+                ? "Students can monitor progress here. Technicians and admins manage workflow updates."
+                : "Technicians and admins can move the ticket through workflow stages here."
+            }
+          >
+            {isStudent ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200">
+                  You can track progress, comments, attachments, and activity history here.
+                  Workflow stage changes are handled by technicians and admins.
+                </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Priority
-                </label>
-                <select
-                  className={fieldClassName}
-                  value={priority}
-                  disabled={!canManage}
-                  onChange={(event) => setPriority(event.target.value as TicketPriority)}
-                >
-                  {meta?.priorities.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Current status
+                    </p>
+                    <div className="mt-2">
+                      <TicketStatusBadge status={ticket.status} />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Assigned technician
-                </label>
-                <select
-                  className={fieldClassName}
-                  value={technicianId}
-                  disabled={!isAdmin}
-                  onChange={(event) => setTechnicianId(event.target.value)}
-                >
-                  <option value="">Unassigned</option>
-                  {meta?.technicians.map((technician) => (
-                    <option key={technician.id} value={technician.id}>
-                      {technician.fullName}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div className="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Priority
+                    </p>
+                    <div className="mt-2">
+                      <TicketPriorityBadge priority={ticket.priority} />
+                    </div>
+                  </div>
 
-              <Button onClick={handleUpdate} disabled={!canManage && !isAdmin}>
-                Save workflow changes
-              </Button>
-            </div>
+                  <div className="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Assigned technician
+                    </p>
+                    <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">
+                      {ticket.assignedTechnician?.fullName ?? "Awaiting assignment"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Last updated
+                    </p>
+                    <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">
+                      {formatDateTime(ticket.updatedAt)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
+                  Staff workflow mode is active. Status and workflow changes made here
+                  will be visible to the student as tracking updates.
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Status
+                  </label>
+                  <select
+                    className={fieldClassName}
+                    value={status}
+                    disabled={!canManage || isSavingWorkflow}
+                    onChange={(event) => setStatus(event.target.value as TicketStatus)}
+                  >
+                    {getAvailableStatuses().map((item) => (
+                      <option key={item} value={item}>
+                        {item.replace(/_/g, " ")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Priority
+                  </label>
+                  <select
+                    className={fieldClassName}
+                    value={priority}
+                    disabled={!canManage || isSavingWorkflow}
+                    onChange={(event) => setPriority(event.target.value as TicketPriority)}
+                  >
+                    {meta?.priorities.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Assigned technician
+                  </label>
+                  <select
+                    className={fieldClassName}
+                    value={technicianId}
+                    disabled={!isAdmin || isSavingWorkflow}
+                    onChange={(event) => setTechnicianId(event.target.value)}
+                  >
+                    <option value="">Unassigned</option>
+                    {meta?.technicians.map((technician) => (
+                      <option key={technician.id} value={technician.id}>
+                        {technician.fullName}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Only admins can assign technicians. Technicians and admins can update status.
+                  </p>
+                </div>
+
+                {workflowMessage ? (
+                  <div className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:text-gray-300">
+                    {workflowMessage}
+                  </div>
+                ) : null}
+
+                <Button onClick={handleUpdate} disabled={!canManage || isSavingWorkflow}>
+                  {isSavingWorkflow ? "Saving..." : "Save workflow changes"}
+                </Button>
+              </div>
+            )}
           </ComponentCard>
 
           <ComponentCard title="Attachments" desc="Upload photos, PDFs, or supporting files.">

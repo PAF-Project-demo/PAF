@@ -49,7 +49,7 @@ export default function TicketListPage() {
       <div className="space-y-6">
         <ComponentCard
           title="Ticket Queue"
-          desc="Search, filter, and monitor the maintenance and incident pipeline."
+          desc="Use the queue to view, search, filter, and track ticket progress. Workflow changes happen in ticket details and are limited to staff roles."
         >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>

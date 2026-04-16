@@ -25,7 +25,7 @@ const tipRules: TipRule[] = [
     id: "hvac-airflow",
     title: "Check the local thermostat and airflow",
     summary: "Many HVAC issues come from thermostat settings, tripped local controls, or blocked vents.",
-    category: "HVAC",
+    category: "Air Conditioning",
     keywords: ["air conditioning", "ac", "cooling", "temperature", "hvac", "air flow", "vent"],
     steps: [
       "Confirm the thermostat is set to the correct mode and target temperature.",
@@ -38,7 +38,7 @@ const tipRules: TipRule[] = [
     id: "electrical-power",
     title: "Try the nearby power source first",
     summary: "A loose cable, switched outlet, or local breaker trip often looks like an equipment failure.",
-    category: "Electrical",
+    category: "Electricity / Lighting",
     keywords: ["power", "electrical", "socket", "outlet", "breaker", "voltage", "lights", "lamp"],
     steps: [
       "Test the device with another known working outlet if it is safe to do so.",
@@ -51,7 +51,7 @@ const tipRules: TipRule[] = [
     id: "plumbing-leak",
     title: "Contain the leak and note the source",
     summary: "Fast containment and a precise source description help plumbing tickets move much faster.",
-    category: "Plumbing",
+    category: "Water / Plumbing",
     keywords: ["leak", "water", "pipe", "plumbing", "drip", "flood", "drain", "ceiling"],
     types: ["INCIDENT", "MAINTENANCE"],
     steps: [
@@ -65,7 +65,7 @@ const tipRules: TipRule[] = [
     id: "network-basic",
     title: "Run a quick network sanity check",
     summary: "A disconnected cable or local Wi-Fi issue can mimic a wider network outage.",
-    category: "Networking",
+    category: "Internet / Wi-Fi",
     keywords: ["network", "internet", "wifi", "wi-fi", "router", "switch", "offline", "connection"],
     types: ["INCIDENT"],
     steps: [
@@ -79,7 +79,7 @@ const tipRules: TipRule[] = [
     id: "projector-av",
     title: "Check the AV basics before dispatch",
     summary: "Input source, lamp state, and simple cabling checks solve many AV tickets quickly.",
-    category: "AV Equipment",
+    category: "Classroom Equipment",
     keywords: ["projector", "display", "screen", "speaker", "audio", "av", "microphone", "hdmi"],
     steps: [
       "Verify the correct input source is selected on the projector or display.",
@@ -92,7 +92,7 @@ const tipRules: TipRule[] = [
     id: "access-reader",
     title: "Try a simple access control reset flow",
     summary: "Reader misreads and access delays are often tied to card placement, dirt, or stale device state.",
-    category: "Access Control",
+    category: "Access / Security",
     keywords: ["card", "reader", "access", "gate", "door", "badge", "turnstile", "lock"],
     steps: [
       "Retry with a known valid card and check whether the problem affects one user or everyone.",
@@ -112,6 +112,19 @@ const tipRules: TipRule[] = [
       "Attach a photo or short note showing the exact fault location when possible.",
     ],
     whenToEscalate: "Proceed with the ticket if the problem blocks work, repeats, or affects safety.",
+  },
+  {
+    id: "furniture-damage",
+    title: "Check whether the damage is stable or spreading",
+    summary: "Furniture and fixture issues are easier to prioritize when the current risk is clear.",
+    category: "Furniture / Facility Damage",
+    keywords: ["chair", "desk", "table", "door", "window", "broken", "damage", "furniture"],
+    steps: [
+      "Note whether the item is simply unusable or creates a safety risk.",
+      "Move people away from unstable furniture, broken glass, or sharp edges.",
+      "Add a short note explaining whether the damage is cosmetic, structural, or blocking access.",
+    ],
+    whenToEscalate: "Escalate immediately if the damage could injure someone or block a room from being used.",
   },
 ];
 

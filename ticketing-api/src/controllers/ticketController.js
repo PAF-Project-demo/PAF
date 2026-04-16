@@ -12,14 +12,15 @@ const prioritySlaMap = {
 };
 
 const defaultCategories = [
-  "Electrical",
-  "HVAC",
-  "Plumbing",
-  "Networking",
-  "Security",
-  "Cleaning",
-  "AV Equipment",
-  "Access Control",
+  "Air Conditioning",
+  "Electricity / Lighting",
+  "Water / Plumbing",
+  "Internet / Wi-Fi",
+  "Classroom Equipment",
+  "Access / Security",
+  "Cleaning / Housekeeping",
+  "Furniture / Facility Damage",
+  "Other",
 ];
 
 function actorFromUser(user) {
@@ -178,7 +179,6 @@ export const createTicket = asyncHandler(async (req, res) => {
     type,
     priority = "MEDIUM",
     category,
-    status = "OPEN",
     location,
     slaHours,
   } = req.body;
@@ -190,16 +190,23 @@ export const createTicket = asyncHandler(async (req, res) => {
     );
   }
 
-  const finalSlaHours = resolveSlaHours(priority, slaHours);
+  const initialPriority = req.user.role === "USER" ? "MEDIUM" : priority;
+  const finalSlaHours =
+    req.user.role === "USER"
+      ? resolveSlaHours(initialPriority)
+      : resolveSlaHours(initialPriority, slaHours);
   const ticket = await Ticket.create({
     ticketId: await nextTicketId(),
     title: title.trim(),
     description: description.trim(),
     type,
-    priority,
+    priority: initialPriority,
     category: category.trim(),
-    status,
-    location,
+    status: "OPEN",
+    location: {
+      ...location,
+      note: type === "INCIDENT" ? location.note : "",
+    },
     reporter: reporterFromUser(req.user),
     slaHours: finalSlaHours,
     dueAt: new Date(Date.now() + finalSlaHours * 60 * 60 * 1000),
@@ -209,7 +216,7 @@ export const createTicket = asyncHandler(async (req, res) => {
         message: "Ticket created.",
         actor: actorFromUser(req.user),
         meta: {
-          priority,
+          priority: initialPriority,
           category,
           type,
         },
