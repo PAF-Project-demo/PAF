@@ -1,5 +1,6 @@
 package com.server.server.user.service;
 
+import com.server.server.activity.service.ActivityEventService;
 import com.server.server.auth.entity.User;
 import com.server.server.auth.entity.UserRole;
 import com.server.server.auth.repository.UserRepository;
@@ -28,16 +29,19 @@ public class RoleRequestService {
     private final UserRepository userRepository;
     private final UserAccessService userAccessService;
     private final RoleRequestRealtimeService roleRequestRealtimeService;
+    private final ActivityEventService activityEventService;
 
     public RoleRequestService(
             RoleRequestRepository roleRequestRepository,
             UserRepository userRepository,
             UserAccessService userAccessService,
-            RoleRequestRealtimeService roleRequestRealtimeService) {
+            RoleRequestRealtimeService roleRequestRealtimeService,
+            ActivityEventService activityEventService) {
         this.roleRequestRepository = roleRequestRepository;
         this.userRepository = userRepository;
         this.userAccessService = userAccessService;
         this.roleRequestRealtimeService = roleRequestRealtimeService;
+        this.activityEventService = activityEventService;
     }
 
     public List<RoleRequestItemResponse> getMyRoleRequests(String requesterUserId) {
@@ -93,6 +97,8 @@ public class RoleRequestService {
                 "Role request submitted successfully. An admin can review it now.",
                 mapToRoleRequestResponse(savedRequest),
                 null);
+
+        activityEventService.recordRoleRequestCreated(requester, savedRequest);
 
         roleRequestRealtimeService.publishRequestCreated(
                 requester.getId(),
@@ -157,6 +163,12 @@ public class RoleRequestService {
                 mapToRoleRequestResponse(savedRequest),
                 mapToUserResponse(requester));
 
+        activityEventService.recordRoleRequestApproved(
+                adminUser,
+                requester,
+                currentUserRole,
+                savedRequest);
+
         roleRequestRealtimeService.publishRequestApproved(
                 adminUser.getId(),
                 response.request(),
@@ -216,6 +228,8 @@ public class RoleRequestService {
                 mapToRoleRequestResponse(savedRequest),
                 null);
 
+        activityEventService.recordRoleRequestRejected(adminUser, savedRequest);
+
         roleRequestRealtimeService.publishRequestRejected(
                 adminUser.getId(),
                 response.request(),
@@ -265,6 +279,8 @@ public class RoleRequestService {
                 mapToRoleRequestResponse(savedRequest),
                 null);
 
+        activityEventService.recordRoleRequestUpdated(requester, savedRequest);
+
         roleRequestRealtimeService.publishRequestUpdated(
                 requester.getId(),
                 response.request(),
@@ -288,6 +304,9 @@ public class RoleRequestService {
         RoleRequestDeleteResponse response = new RoleRequestDeleteResponse(
                 "Role request deleted successfully.",
                 roleRequest.getId());
+
+        User requester = userAccessService.getAuthenticatedUser(actorUserId);
+        activityEventService.recordRoleRequestDeleted(requester, roleRequest);
 
         roleRequestRealtimeService.publishRequestDeleted(
                 actorUserId,

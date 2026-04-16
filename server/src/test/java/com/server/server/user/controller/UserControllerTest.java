@@ -121,7 +121,7 @@ class UserControllerTest {
     @Test
     void updateUserRoleReturnsUpdatedRole() throws Exception {
         given(userRepository.findById("admin-user")).willReturn(Optional.of(user("admin-user", UserRole.ADMIN)));
-        given(userManagementService.updateUserRole("user-2", UserRole.MANAGER)).willReturn(
+        given(userManagementService.updateUserRole("admin-user", "user-2", UserRole.MANAGER)).willReturn(
                 new UserRoleUpdateResponse(
                         "User role updated to MANAGER successfully.",
                         new UserTableItemResponse(
@@ -150,7 +150,7 @@ class UserControllerTest {
     @Test
     void updateUserRoleReturnsNotFoundForMissingUser() throws Exception {
         given(userRepository.findById("admin-user")).willReturn(Optional.of(user("admin-user", UserRole.ADMIN)));
-        given(userManagementService.updateUserRole("missing-user", UserRole.TECHNICIAN))
+        given(userManagementService.updateUserRole("admin-user", "missing-user", UserRole.TECHNICIAN))
                 .willThrow(new UserNotFoundException("User not found."));
 
         mockMvc.perform(patch("/api/users/missing-user/role")
