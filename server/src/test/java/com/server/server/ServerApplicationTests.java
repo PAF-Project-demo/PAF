@@ -1,5 +1,6 @@
 package com.server.server;
 
+import static com.server.server.support.TestAuthentication.authenticatedUser;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -12,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.server.server.auth.controller.AuthController;
 import com.server.server.auth.dto.AuthResponse;
+import com.server.server.auth.entity.User;
 import com.server.server.auth.entity.UserRole;
 import com.server.server.auth.exception.DuplicateEmailException;
 import com.server.server.auth.exception.InvalidCredentialsException;
@@ -27,6 +29,7 @@ import com.server.server.auth.security.UserSessionRefreshFilter;
 import com.server.server.auth.service.AuthService;
 import com.server.server.config.SecurityConfig;
 import com.server.server.user.service.UserAccessService;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -291,5 +294,33 @@ class ServerApplicationTests {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl(
                         "http://localhost:5173/signup?githubError=GitHub%20sign-in%20was%20cancelled."));
+    }
+
+    @Test
+    void currentUserProfileReturnsAuthenticatedUserDetails() throws Exception {
+        User currentUser = new User();
+        currentUser.setId("507f1f77bcf86cd799439011");
+        currentUser.setEmail("aindeepa59@gmail.com");
+        currentUser.setDisplayName("anuk549");
+        currentUser.setPhotoUrl("https://avatars.githubusercontent.com/u/130187871?v=4");
+        currentUser.setGithubSubject("130187871");
+        currentUser.setRole(UserRole.ADMIN);
+        currentUser.setCreatedAt(LocalDateTime.of(2026, 4, 7, 8, 12, 8));
+
+        given(userRepository.findById("507f1f77bcf86cd799439011"))
+                .willReturn(java.util.Optional.of(currentUser));
+        given(userAccessService.getAuthenticatedUser("507f1f77bcf86cd799439011"))
+                .willReturn(currentUser);
+
+        mockMvc.perform(get("/api/auth/profile")
+                        .with(authenticatedUser("507f1f77bcf86cd799439011", UserRole.ADMIN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value("507f1f77bcf86cd799439011"))
+                .andExpect(jsonPath("$.email").value("aindeepa59@gmail.com"))
+                .andExpect(jsonPath("$.displayName").value("anuk549"))
+                .andExpect(jsonPath("$.provider").value("GITHUB"))
+                .andExpect(jsonPath("$.role").value("ADMIN"))
+                .andExpect(jsonPath("$.githubSubject").value("130187871"))
+                .andExpect(jsonPath("$.createdAt").value("2026-04-07T08:12:08"));
     }
 }
