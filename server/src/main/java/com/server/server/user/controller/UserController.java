@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,8 +44,12 @@ public class UserController {
 
     @PatchMapping("/{targetUserId}/role")
     public ResponseEntity<UserRoleUpdateResponse> updateUserRole(
+            Authentication authentication,
             @PathVariable String targetUserId,
             @Valid @RequestBody UpdateUserRoleRequest request) {
-        return ResponseEntity.ok(userManagementService.updateUserRole(targetUserId, request.role()));
+        return ResponseEntity.ok(userManagementService.updateUserRole(
+                authentication.getName(),
+                targetUserId,
+                request.role()));
     }
 }

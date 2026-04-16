@@ -26,6 +26,27 @@ public final class AuthResponses {
                 role);
     }
 
+    public static CurrentUserProfileResponse profileFromUser(User user) {
+        UserRole role = user.getRole() != null ? user.getRole() : UserRole.USER;
+        String provider = isNotBlank(user.getLinkedinSubject())
+                ? "LINKEDIN"
+                : isNotBlank(user.getGithubSubject())
+                        ? "GITHUB"
+                        : isNotBlank(user.getGoogleSubject()) ? "GOOGLE" : "LOCAL";
+
+        return new CurrentUserProfileResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getDisplayName(),
+                user.getPhotoUrl(),
+                provider,
+                role,
+                user.getCreatedAt(),
+                user.getGoogleSubject(),
+                user.getLinkedinSubject(),
+                user.getGithubSubject());
+    }
+
     private static boolean isNotBlank(String value) {
         return value != null && !value.isBlank();
     }
