@@ -14,7 +14,7 @@ export default function AuditLog() {
       <div className="space-y-6">
         <ComponentCard
           title="Audit Log"
-          desc="Persistent activity history for role requests, admin reviews, and manual role changes."
+          desc="Search, filter, and paginate the stored history of role requests, admin reviews, and direct role changes."
         >
           <ActivityAuditTable />
         </ComponentCard>
