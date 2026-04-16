@@ -69,6 +69,7 @@ export default function MyRoleRequestsTable({
   const { showNotification } = useNotification();
   const [requests, setRequests] = useState<RoleRequestItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [description, setDescription] = useState("");
@@ -78,6 +79,10 @@ export default function MyRoleRequestsTable({
   const [requestToDelete, setRequestToDelete] = useState<RoleRequestItem | null>(
     null
   );
+  const showLoadingState = isLoading || isRefreshing;
+  const loadingRequestsLabel = isRefreshing
+    ? "Refreshing your role requests"
+    : "Loading your role requests";
 
   const currentRole = normalizeRole(currentUserRole);
   const requestableRoles = useMemo(
@@ -203,8 +208,14 @@ export default function MyRoleRequestsTable({
     const abortController = new AbortController();
 
     const loadRequests = async () => {
+      const shouldRefreshInPlace = requests.length > 0;
+
       try {
-        setIsLoading(true);
+        if (shouldRefreshInPlace) {
+          setIsRefreshing(true);
+        } else {
+          setIsLoading(true);
+        }
         setError("");
 
         const authSession = getStoredAuthSession();
@@ -246,6 +257,7 @@ export default function MyRoleRequestsTable({
         setError("Cannot reach the server to load your role requests.");
       } finally {
         setIsLoading(false);
+        setIsRefreshing(false);
       }
     };
 
@@ -576,21 +588,21 @@ export default function MyRoleRequestsTable({
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {isLoading ? (
+              {showLoadingState ? (
                 <TableRow>
                   <TableCell colSpan={tableColumnCount} className="px-5 py-10">
                     <LoadingIndicator
                       layout="stacked"
                       size="md"
-                      label="Loading your role requests"
-                      description="Please wait while your latest requests are fetched."
+                      label={loadingRequestsLabel}
+                      description="Please wait while your latest requests are prepared."
                       className="mx-auto"
                     />
                   </TableCell>
                 </TableRow>
               ) : null}
 
-              {!isLoading && error ? (
+              {!showLoadingState && error ? (
                 <TableRow>
                   <TableCell
                     colSpan={tableColumnCount}
@@ -601,7 +613,7 @@ export default function MyRoleRequestsTable({
                 </TableRow>
               ) : null}
 
-              {!isLoading && !error && requests.length === 0 ? (
+              {!showLoadingState && !error && requests.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={tableColumnCount}
@@ -612,7 +624,7 @@ export default function MyRoleRequestsTable({
                 </TableRow>
               ) : null}
 
-              {!isLoading &&
+              {!showLoadingState &&
                 !error &&
                 requests.map((request) => {
                   const isDeleting = deletingRequestId === request.id;
