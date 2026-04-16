@@ -1,0 +1,74 @@
+CREATE TABLE users (
+  id CHAR(36) PRIMARY KEY,
+  full_name VARCHAR(120) NOT NULL,
+  email VARCHAR(160) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('USER', 'TECHNICIAN', 'ADMIN') NOT NULL DEFAULT 'USER',
+  department VARCHAR(120),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE tickets (
+  id CHAR(36) PRIMARY KEY,
+  ticket_id VARCHAR(30) NOT NULL UNIQUE,
+  reporter_id CHAR(36) NOT NULL,
+  assigned_technician_id CHAR(36),
+  title VARCHAR(160) NOT NULL,
+  description TEXT NOT NULL,
+  type ENUM('MAINTENANCE', 'INCIDENT') NOT NULL,
+  priority ENUM('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') NOT NULL DEFAULT 'MEDIUM',
+  category VARCHAR(80) NOT NULL,
+  status ENUM('OPEN', 'IN_PROGRESS', 'ON_HOLD', 'RESOLVED', 'CLOSED', 'CANCELLED') NOT NULL DEFAULT 'OPEN',
+  building VARCHAR(120) NOT NULL,
+  floor_label VARCHAR(40),
+  room_label VARCHAR(40),
+  campus VARCHAR(80),
+  location_note VARCHAR(255),
+  sla_hours INT NOT NULL DEFAULT 24,
+  due_at DATETIME NOT NULL,
+  overdue BOOLEAN NOT NULL DEFAULT FALSE,
+  resolved_at DATETIME NULL,
+  closed_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (reporter_id) REFERENCES users(id),
+  FOREIGN KEY (assigned_technician_id) REFERENCES users(id)
+);
+
+CREATE TABLE ticket_comments (
+  id CHAR(36) PRIMARY KEY,
+  ticket_id CHAR(36) NOT NULL,
+  author_id CHAR(36) NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+  FOREIGN KEY (author_id) REFERENCES users(id)
+);
+
+CREATE TABLE ticket_attachments (
+  id CHAR(36) PRIMARY KEY,
+  ticket_id CHAR(36) NOT NULL,
+  uploaded_by CHAR(36) NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(120) NOT NULL,
+  file_size BIGINT NOT NULL,
+  file_url VARCHAR(255) NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+  FOREIGN KEY (uploaded_by) REFERENCES users(id)
+);
+
+CREATE TABLE ticket_activity (
+  id CHAR(36) PRIMARY KEY,
+  ticket_id CHAR(36) NOT NULL,
+  actor_id CHAR(36) NOT NULL,
+  action VARCHAR(80) NOT NULL,
+  message VARCHAR(255) NOT NULL,
+  meta JSON NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+  FOREIGN KEY (actor_id) REFERENCES users(id)
+);

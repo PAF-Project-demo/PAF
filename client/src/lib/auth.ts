@@ -228,6 +228,12 @@ export const buildAuthSession = (
 export const isAdminRole = (role?: string | null) =>
   typeof role === "string" && role.trim().toUpperCase() === "ADMIN";
 
+export const isTechnicianRole = (role?: string | null) =>
+  typeof role === "string" && role.trim().toUpperCase() === "TECHNICIAN";
+
+export const isAdminOrTechnicianRole = (role?: string | null) =>
+  isAdminRole(role) || isTechnicianRole(role);
+
 export const getUserDisplayName = (email: string) => {
   const [localPart = "Signed In User"] = email.split("@");
   const displayName = localPart

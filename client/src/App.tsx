@@ -20,13 +20,18 @@ import FormElements from "./pages/Forms/FormElements";
 import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
-import Home from "./pages/Dashboard/Home";
 import {
   RedirectAuthenticatedUser,
   RequireAuth,
   RequireAdmin,
+  RequireStaff,
 } from "./components/auth/AuthRouteGuards";
 import OAuthStatusHandler from "./components/auth/OAuthStatusHandler";
+import TicketDashboardPage from "./pages/Tickets/TicketDashboardPage";
+import TicketCreatePage from "./pages/Tickets/TicketCreatePage";
+import TicketListPage from "./pages/Tickets/TicketListPage";
+import TicketDetailsPage from "./pages/Tickets/TicketDetailsPage";
+import TicketReportsPage from "./pages/Tickets/TicketReportsPage";
 
 // Facilities & Assets Pages
 import ResourceListPage from "./pages/Facilities/ResourceListPage";
@@ -43,7 +48,14 @@ export default function App() {
           <Route element={<RequireAuth />}>
             {/* Dashboard Layout */}
             <Route element={<AppLayout />}>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={<TicketDashboardPage />} />
+              <Route path="/tickets/dashboard" element={<TicketDashboardPage />} />
+              <Route path="/tickets" element={<TicketListPage />} />
+              <Route path="/tickets/new" element={<TicketCreatePage />} />
+              <Route path="/tickets/:id" element={<TicketDetailsPage />} />
+              <Route element={<RequireStaff />}>
+                <Route path="/tickets/reports" element={<TicketReportsPage />} />
+              </Route>
 
               {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />

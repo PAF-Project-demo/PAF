@@ -1,5 +1,14 @@
 # Secure OAuth With Role-Based Authorization
 
+## Ticketing module
+
+The repo now also includes a Maintenance and Incident Ticketing System.
+
+- Guide: `TICKETING_SYSTEM_GUIDE.md`
+- Express backend: `ticketing-api`
+- React pages: `client/src/pages/Tickets`
+- Schema docs: `ticketing-api/docs`
+
 This project now uses Spring Security session authentication instead of the insecure `X-Auth-User-Id` header.
 
 ## What changed

@@ -5,21 +5,55 @@ import {
   BoxCubeIcon,
   ChevronDownIcon,
   GroupIcon,
+  PieChartIcon,
+  PlusIcon,
+  TaskIcon,
   HorizontaLDots,
   UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import { AUTH_CHANGE_EVENT, getStoredAuthSession, isAdminRole } from "../lib/auth";
+import {
+  AUTH_CHANGE_EVENT,
+  getStoredAuthSession,
+  isAdminRole,
+} from "../lib/auth";
 
 type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
-  subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
+  roles?: string[];
+  subItems?: {
+    name: string;
+    path: string;
+    pro?: boolean;
+    new?: boolean;
+    roles?: string[];
+  }[];
 };
 
 const navItems: NavItem[] = [
-
+  {
+    icon: <TaskIcon />,
+    name: "Ticket Dashboard",
+    path: "/tickets/dashboard",
+  },
+  {
+    icon: <PlusIcon />,
+    name: "Create Ticket",
+    path: "/tickets/new",
+  },
+  {
+    icon: <BoxCubeIcon />,
+    name: "Ticket Queue",
+    path: "/tickets",
+  },
+  {
+    icon: <PieChartIcon />,
+    name: "Reports",
+    path: "/tickets/reports",
+    roles: ["ADMIN", "TECHNICIAN"],
+  },
   {
     icon: <BoxCubeIcon />, // Assuming this icon is suitable
     name: "Facilities & Assets",
@@ -129,6 +163,7 @@ const AppSidebar: React.FC = () => {
   };
 
   const visibleNavItems = navItems
+    .filter((nav) => !nav.roles || nav.roles.includes(authSession?.role ?? "USER"))
     .map((nav) => {
       if (nav.name !== "Role Management" || !nav.subItems) {
         return nav;
@@ -138,8 +173,11 @@ const AppSidebar: React.FC = () => {
         ...nav,
         subItems: nav.subItems.filter(
           (subItem) =>
-            !["/approval-requests", "/signed-in-users", "/audit-log"].includes(subItem.path) ||
-            isAdmin
+            (
+              !["/approval-requests", "/signed-in-users", "/audit-log"].includes(subItem.path) ||
+              isAdmin
+            ) &&
+            (!subItem.roles || subItem.roles.includes(authSession?.role ?? "USER"))
         ),
       };
     })
