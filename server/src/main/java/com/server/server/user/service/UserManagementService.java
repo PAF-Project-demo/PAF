@@ -1,5 +1,6 @@
 package com.server.server.user.service;
 
+import com.server.server.activity.service.ActivityEventService;
 import com.server.server.auth.entity.User;
 import com.server.server.auth.entity.UserRole;
 import com.server.server.auth.repository.UserRepository;
@@ -12,12 +13,20 @@ import org.springframework.stereotype.Service;
 public class UserManagementService {
 
     private final UserRepository userRepository;
+    private final UserAccessService userAccessService;
+    private final ActivityEventService activityEventService;
 
-    public UserManagementService(UserRepository userRepository) {
+    public UserManagementService(
+            UserRepository userRepository,
+            UserAccessService userAccessService,
+            ActivityEventService activityEventService) {
         this.userRepository = userRepository;
+        this.userAccessService = userAccessService;
+        this.activityEventService = activityEventService;
     }
 
-    public UserRoleUpdateResponse updateUserRole(String targetUserId, UserRole role) {
+    public UserRoleUpdateResponse updateUserRole(String actorUserId, String targetUserId, UserRole role) {
+        User adminUser = userAccessService.getAuthenticatedUser(actorUserId);
         User user = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new UserNotFoundException("User not found."));
 
@@ -31,6 +40,7 @@ public class UserManagementService {
 
         user.setRole(role);
         User savedUser = userRepository.save(user);
+        activityEventService.recordDirectRoleChange(adminUser, savedUser, currentRole);
 
         return new UserRoleUpdateResponse(
                 "User role updated to " + role + " successfully.",

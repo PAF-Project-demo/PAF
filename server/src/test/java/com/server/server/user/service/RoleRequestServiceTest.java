@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.server.server.activity.service.ActivityEventService;
 import com.server.server.auth.entity.User;
 import com.server.server.auth.entity.UserRole;
 import com.server.server.auth.exception.ForbiddenAccessException;
@@ -39,6 +40,9 @@ class RoleRequestServiceTest {
     @Mock
     private RoleRequestRealtimeService roleRequestRealtimeService;
 
+    @Mock
+    private ActivityEventService activityEventService;
+
     @Test
     void createRoleRequestStoresPendingRequest() {
         User requester = new User();
@@ -61,7 +65,8 @@ class RoleRequestServiceTest {
                 roleRequestRepository,
                 userRepository,
                 userAccessService,
-                roleRequestRealtimeService);
+                roleRequestRealtimeService,
+                activityEventService);
 
         RoleRequestMutationResponse response = roleRequestService.createRoleRequest(
                 "user-1",
@@ -79,6 +84,7 @@ class RoleRequestServiceTest {
                 eq("user-1"),
                 any(),
                 eq(response.message()));
+        verify(activityEventService).recordRoleRequestCreated(eq(requester), any(RoleRequest.class));
     }
 
     @Test
@@ -96,7 +102,8 @@ class RoleRequestServiceTest {
                 roleRequestRepository,
                 userRepository,
                 userAccessService,
-                roleRequestRealtimeService);
+                roleRequestRealtimeService,
+                activityEventService);
 
         assertThrows(
                 InvalidRoleRequestException.class,
@@ -142,7 +149,8 @@ class RoleRequestServiceTest {
                 roleRequestRepository,
                 userRepository,
                 userAccessService,
-                roleRequestRealtimeService);
+                roleRequestRealtimeService,
+                activityEventService);
 
         RoleRequestMutationResponse response = roleRequestService.approveRoleRequest("admin-user", "request-1");
 
@@ -157,6 +165,11 @@ class RoleRequestServiceTest {
                 any(),
                 any(),
                 eq(response.message()));
+        verify(activityEventService).recordRoleRequestApproved(
+                eq(adminUser),
+                eq(requester),
+                eq(UserRole.USER),
+                eq(roleRequest));
     }
 
     @Test
@@ -186,7 +199,8 @@ class RoleRequestServiceTest {
                 roleRequestRepository,
                 userRepository,
                 userAccessService,
-                roleRequestRealtimeService);
+                roleRequestRealtimeService,
+                activityEventService);
 
         RoleRequestMutationResponse response = roleRequestService.rejectRoleRequest(
                 "admin-user",
@@ -201,6 +215,7 @@ class RoleRequestServiceTest {
                 eq("admin-user"),
                 any(),
                 eq(response.message()));
+        verify(activityEventService).recordRoleRequestRejected(eq(adminUser), eq(roleRequest));
     }
 
     @Test
@@ -225,7 +240,8 @@ class RoleRequestServiceTest {
                 roleRequestRepository,
                 userRepository,
                 userAccessService,
-                roleRequestRealtimeService);
+                roleRequestRealtimeService,
+                activityEventService);
 
         RoleRequestMutationResponse response = roleRequestService.updateRoleRequest(
                 "user-1",
@@ -245,6 +261,7 @@ class RoleRequestServiceTest {
                 eq("user-1"),
                 any(),
                 eq(response.message()));
+        verify(activityEventService).recordRoleRequestUpdated(eq(requester), eq(roleRequest));
     }
 
     @Test
@@ -263,7 +280,8 @@ class RoleRequestServiceTest {
                 roleRequestRepository,
                 userRepository,
                 userAccessService,
-                roleRequestRealtimeService);
+                roleRequestRealtimeService,
+                activityEventService);
 
         assertThrows(
                 ForbiddenAccessException.class,
@@ -276,17 +294,24 @@ class RoleRequestServiceTest {
 
     @Test
     void deleteRoleRequestRemovesExistingRequest() {
+        User requester = new User();
+        requester.setId("user-1");
+        requester.setEmail("user@example.com");
+        requester.setRole(UserRole.USER);
+
         RoleRequest roleRequest = new RoleRequest();
         roleRequest.setId("request-1");
         roleRequest.setRequesterUserId("user-1");
 
+        when(userAccessService.getAuthenticatedUser("user-1")).thenReturn(requester);
         when(roleRequestRepository.findById("request-1")).thenReturn(Optional.of(roleRequest));
 
         RoleRequestService roleRequestService = new RoleRequestService(
                 roleRequestRepository,
                 userRepository,
                 userAccessService,
-                roleRequestRealtimeService);
+                roleRequestRealtimeService,
+                activityEventService);
 
         RoleRequestDeleteResponse response = roleRequestService.deleteRoleRequest("user-1", "request-1");
 
@@ -301,6 +326,7 @@ class RoleRequestServiceTest {
                 eq("user-1"),
                 any(),
                 eq(response.message()));
+        verify(activityEventService).recordRoleRequestDeleted(eq(requester), eq(roleRequest));
     }
 
     @Test
@@ -318,7 +344,8 @@ class RoleRequestServiceTest {
                 roleRequestRepository,
                 userRepository,
                 userAccessService,
-                roleRequestRealtimeService);
+                roleRequestRealtimeService,
+                activityEventService);
 
         assertThrows(
                 ForbiddenAccessException.class,

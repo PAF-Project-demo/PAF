@@ -49,6 +49,7 @@ const navItems: NavItem[] = [
       { name: "Role Requests", path: "/role-requests", pro: false },
       { name: "Approval Requests", path: "/approval-requests", pro: false },
       { name: "Signed-In Users", path: "/signed-in-users", pro: false },
+      { name: "Audit Log", path: "/audit-log", pro: false },
     ],
   },
   {
@@ -197,7 +198,7 @@ const AppSidebar: React.FC = () => {
         ...nav,
         subItems: nav.subItems.filter(
           (subItem) =>
-            !["/approval-requests", "/signed-in-users"].includes(subItem.path) ||
+            !["/approval-requests", "/signed-in-users", "/audit-log"].includes(subItem.path) ||
             isAdmin
         ),
       };
