@@ -72,6 +72,10 @@ export default function AdminRoleRequestsTable({
   );
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
+  const showLoadingState = isLoading || isRefreshing;
+  const loadingRequestsLabel = isRefreshing
+    ? "Refreshing approval requests"
+    : "Loading approval requests";
 
   useRoleRequestStream({
     includeAdminEvents: true,
@@ -469,16 +473,6 @@ export default function AdminRoleRequestsTable({
 
   return (
     <div className="space-y-4">
-      {isRefreshing ? (
-        <div className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 dark:border-brand-500/20 dark:bg-brand-500/10">
-          <LoadingIndicator
-            size="sm"
-            label="Refreshing approval requests"
-            description="Loading the latest approval request updates."
-          />
-        </div>
-      ) : null}
-
       <div className="max-w-full overflow-x-auto">
         <div className="min-w-[1040px]">
           <Table>
@@ -529,21 +523,21 @@ export default function AdminRoleRequestsTable({
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {isLoading ? (
+              {showLoadingState ? (
                 <TableRow>
                   <TableCell colSpan={tableColumnCount} className="px-5 py-10">
                     <LoadingIndicator
                       layout="stacked"
                       size="md"
-                      label="Loading approval requests"
-                      description="Please wait while all submitted role requests are fetched."
+                      label={loadingRequestsLabel}
+                      description="Please wait while submitted role requests are prepared."
                       className="mx-auto"
                     />
                   </TableCell>
                 </TableRow>
               ) : null}
 
-              {!isLoading && error ? (
+              {!showLoadingState && error ? (
                 <TableRow>
                   <TableCell
                     colSpan={tableColumnCount}
@@ -554,7 +548,7 @@ export default function AdminRoleRequestsTable({
                 </TableRow>
               ) : null}
 
-              {!isLoading && !error && requests.length === 0 ? (
+              {!showLoadingState && !error && requests.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={tableColumnCount}
@@ -565,7 +559,7 @@ export default function AdminRoleRequestsTable({
                 </TableRow>
               ) : null}
 
-              {!isLoading &&
+              {!showLoadingState &&
                 !error &&
                 requests.map((roleRequest) => {
                   const isApproving = approvingRequestId === roleRequest.id;
