@@ -8,6 +8,22 @@ import type {
   TicketStatus,
 } from "./types";
 
+const dashboardStatusOrder: TicketStatus[] = [
+  "OPEN",
+  "IN_PROGRESS",
+  "ON_HOLD",
+  "RESOLVED",
+  "CLOSED",
+  "CANCELLED",
+];
+
+const dashboardPriorityOrder: TicketPriority[] = [
+  "LOW",
+  "MEDIUM",
+  "HIGH",
+  "CRITICAL",
+];
+
 export function formatTicketLocation(ticketLocation: TicketRecord["location"]) {
   return [
     ticketLocation.building,
@@ -16,7 +32,7 @@ export function formatTicketLocation(ticketLocation: TicketRecord["location"]) {
     ticketLocation.campus ?? "",
   ]
     .filter(Boolean)
-    .join(" • ");
+    .join(" | ");
 }
 
 export function formatDateTime(value?: string | null) {
@@ -92,6 +108,20 @@ export function canViewReports(role?: string | null) {
   return role === "TECHNICIAN" || role === "ADMIN";
 }
 
+function getLastSixMonthLabels() {
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    year: "numeric",
+  });
+
+  return Array.from({ length: 6 }, (_, index) => {
+    const current = new Date();
+    current.setDate(1);
+    current.setMonth(current.getMonth() - (5 - index));
+    return formatter.format(current);
+  });
+}
+
 export function applyTicketFilters(tickets: TicketRecord[], filters: TicketFilters) {
   const search = filters.search?.trim().toLowerCase();
 
@@ -134,10 +164,12 @@ export function buildDashboardSummary(tickets: TicketRecord[]): DashboardSummary
   const statusMap = new Map<string, number>();
   const priorityMap = new Map<string, number>();
   const monthlyMap = new Map<string, number>();
+  const typeMap = new Map<string, number>();
 
   tickets.forEach((ticket) => {
     statusMap.set(ticket.status, (statusMap.get(ticket.status) ?? 0) + 1);
     priorityMap.set(ticket.priority, (priorityMap.get(ticket.priority) ?? 0) + 1);
+    typeMap.set(ticket.type, (typeMap.get(ticket.type) ?? 0) + 1);
 
     const monthKey = new Date(ticket.createdAt).toLocaleString(undefined, {
       month: "short",
@@ -160,17 +192,21 @@ export function buildDashboardSummary(tickets: TicketRecord[]): DashboardSummary
       resolvedRate: tickets.length ? Math.round((resolvedCount / tickets.length) * 100) : 0,
     },
     charts: {
-      statusBreakdown: Array.from(statusMap.entries()).map(([label, value]) => ({
+      statusBreakdown: dashboardStatusOrder.map((label) => ({
         label,
-        value,
+        value: statusMap.get(label) ?? 0,
       })),
-      priorityBreakdown: Array.from(priorityMap.entries()).map(([label, value]) => ({
+      priorityBreakdown: dashboardPriorityOrder.map((label) => ({
         label,
-        value,
+        value: priorityMap.get(label) ?? 0,
       })),
-      monthlyTrend: Array.from(monthlyMap.entries()).map(([label, created]) => ({
+      monthlyTrend: getLastSixMonthLabels().map((label) => ({
         label,
-        created,
+        created: monthlyMap.get(label) ?? 0,
+      })),
+      typeBreakdown: ["MAINTENANCE", "INCIDENT"].map((label) => ({
+        label,
+        value: typeMap.get(label) ?? 0,
       })),
     },
     recentTickets: [...tickets]

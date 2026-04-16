@@ -112,6 +112,7 @@ export interface DashboardSummary {
     statusBreakdown: Array<{ label: string; value: number }>;
     priorityBreakdown: Array<{ label: string; value: number }>;
     monthlyTrend: Array<{ label: string; created: number }>;
+    typeBreakdown: Array<{ label: string; value: number }>;
   };
   recentTickets: TicketRecord[];
 }

@@ -551,6 +551,7 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
         charts: {
           statusBreakdown: Array<{ _id: string; count: number }>;
           priorityBreakdown: Array<{ _id: string; count: number }>;
+          typeBreakdown: Array<{ _id: string; count: number }>;
           monthlyTrend: Array<{ label: string; created: number }>;
         };
         recentTickets: TicketRecord[];
@@ -564,6 +565,10 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
             value: item.count,
           })),
           priorityBreakdown: response.charts.priorityBreakdown.map((item) => ({
+            label: item._id,
+            value: item.count,
+          })),
+          typeBreakdown: response.charts.typeBreakdown.map((item) => ({
             label: item._id,
             value: item.count,
           })),
