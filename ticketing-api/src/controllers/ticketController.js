@@ -183,7 +183,13 @@ export const createTicket = asyncHandler(async (req, res) => {
     slaHours,
   } = req.body;
 
-  if (!title || !description || !type || !category || !location?.building) {
+  if (
+    !title?.trim() ||
+    !description?.trim() ||
+    !type ||
+    !category?.trim() ||
+    !location?.building?.trim()
+  ) {
     throw createHttpError(
       400,
       "title, description, type, category, and location.building are required."
@@ -210,7 +216,11 @@ export const createTicket = asyncHandler(async (req, res) => {
     status: "OPEN",
     location: {
       ...location,
-      note: type === "INCIDENT" ? location.note : "",
+      building: location.building.trim(),
+      floor: location.floor?.trim() || "",
+      room: location.room?.trim() || "",
+      campus: location.campus?.trim() || "",
+      note: type === "INCIDENT" ? location.note?.trim() || "" : "",
     },
     reporter: reporterFromUser(req.user),
     slaHours: finalSlaHours,

@@ -1,4 +1,4 @@
-import { getStoredAuthSession } from "../auth";
+import { getStoredAuthSession, parseResponsePayload } from "../auth";
 import {
   applyTicketFilters,
   buildDashboardSummary,
@@ -32,11 +32,17 @@ const API_BASE_URL = (import.meta.env.VITE_TICKETING_API_BASE_URL ?? "http://loc
   /\/$/,
   ""
 );
-const API_TOKEN =
-  import.meta.env.VITE_TICKETING_API_TOKEN ??
-  (typeof window !== "undefined"
-    ? window.localStorage.getItem("paf.ticketing.jwt")
-    : null);
+function getTicketingApiToken() {
+  if (typeof window === "undefined") {
+    return import.meta.env.VITE_TICKETING_API_TOKEN ?? null;
+  }
+
+  return (
+    import.meta.env.VITE_TICKETING_API_TOKEN ??
+    window.localStorage.getItem("paf.ticketing.jwt") ??
+    window.sessionStorage.getItem("paf.ticketing.jwt")
+  );
+}
 
 function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
@@ -155,8 +161,9 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!headers.has("Content-Type") && !(init?.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
-  if (API_TOKEN) {
-    headers.set("Authorization", `Bearer ${API_TOKEN}`);
+  const apiToken = getTicketingApiToken();
+  if (apiToken) {
+    headers.set("Authorization", `Bearer ${apiToken}`);
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -165,7 +172,13 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`Ticketing API request failed with ${response.status}`);
+    const rawResponse = await response.text();
+    const payload = parseResponsePayload<{ message?: string }>(rawResponse);
+    const message =
+      payload?.message?.trim() ||
+      `Ticketing API request failed with ${response.status}.`;
+
+    throw new Error(message);
   }
 
   return (await response.json()) as T;
@@ -244,33 +257,34 @@ export async function fetchTicketById(ticketId: string): Promise<TicketRecord> {
 
 export async function createTicket(input: CreateTicketInput): Promise<TicketRecord> {
   if (API_ENABLED) {
-    try {
-      const created = await apiFetch<TicketRecord>("/api/tickets", {
+    const created = await apiFetch<TicketRecord>("/api/tickets", {
+      method: "POST",
+      body: JSON.stringify({
+        title: input.title.trim(),
+        description: input.description.trim(),
+        type: input.type,
+        category: input.category.trim(),
+        location: {
+          ...input.location,
+          building: input.location.building.trim(),
+          floor: input.location.floor?.trim() ?? "",
+          room: input.location.room?.trim() ?? "",
+          campus: input.location.campus?.trim() ?? "",
+          note: input.location.note?.trim() ?? "",
+        },
+      }),
+    });
+
+    if (input.attachments?.length) {
+      const formData = new FormData();
+      input.attachments.forEach((file) => formData.append("attachments", file));
+      return await apiFetch<TicketRecord>(`/api/tickets/${created.id}/attachments`, {
         method: "POST",
-        body: JSON.stringify({
-          title: input.title,
-          description: input.description,
-          type: input.type,
-          category: input.category,
-          status: input.status,
-          location: input.location,
-          slaHours: input.slaHours,
-        }),
+        body: formData,
       });
-
-      if (input.attachments?.length) {
-        const formData = new FormData();
-        input.attachments.forEach((file) => formData.append("attachments", file));
-        return await apiFetch<TicketRecord>(`/api/tickets/${created.id}/attachments`, {
-          method: "POST",
-          body: formData,
-        });
-      }
-
-      return created;
-    } catch {
-      // Fall back to local mock state for this workspace.
     }
+
+    return created;
   }
 
   const db = readMockDb();
