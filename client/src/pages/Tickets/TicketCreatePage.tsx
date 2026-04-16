@@ -3,7 +3,9 @@ import { useNavigate } from "react-router";
 import ComponentCard from "../../components/common/ComponentCard";
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
+import TroubleshootingPanel from "../../components/tickets/TroubleshootingPanel";
 import Button from "../../components/ui/button/Button";
+import { getTroubleshootingTips } from "../../lib/ticketing/troubleshooting";
 import { createTicket, fetchTicketMeta } from "../../lib/ticketing/ticketService";
 import type {
   CreateTicketInput,
@@ -60,6 +62,17 @@ export default function TicketCreatePage() {
     );
   }, [form]);
 
+  const troubleshootingTips = useMemo(
+    () =>
+      getTroubleshootingTips({
+        title: form.title,
+        description: form.description,
+        category: form.category,
+        type: form.type,
+      }),
+    [form.title, form.description, form.category, form.type]
+  );
+
   const updateLocation = (field: keyof CreateTicketInput["location"], value: string) => {
     setForm((current) => ({
       ...current,
@@ -94,6 +107,8 @@ export default function TicketCreatePage() {
       <PageBreadCrumb pageTitle="Create Ticket" />
 
       <div className="space-y-6">
+        <TroubleshootingPanel tips={troubleshootingTips} />
+
         <ComponentCard
           title="New Maintenance / Incident Ticket"
           desc="Capture the issue clearly so the right technician can triage it quickly."
