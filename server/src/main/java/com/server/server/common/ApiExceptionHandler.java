@@ -13,6 +13,8 @@ import com.server.server.booking.exception.InvalidBookingException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,6 +37,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ForbiddenAccessException.class)
     public ResponseEntity<ApiError> handleForbiddenAccess(ForbiddenAccessException exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler({AuthorizationDeniedException.class, AccessDeniedException.class})
+    public ResponseEntity<ApiError> handleAccessDenied(Exception exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiError("Only admins can access this resource."));
     }
 
     @ExceptionHandler(UserNotFoundException.class)

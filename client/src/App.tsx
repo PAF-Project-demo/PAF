@@ -15,6 +15,7 @@ import Calendar from "./pages/Calendar";
 import BasicTables from "./pages/Tables/BasicTables";
 import ApprovalRequests from "./pages/Tables/ApprovalRequests";
 import SignedInUsers from "./pages/Tables/SignedInUsers";
+import AuditLog from "./pages/Tables/AuditLog";
 import FormElements from "./pages/Forms/FormElements";
 import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
@@ -74,6 +75,7 @@ export default function App() {
                   element={<ApprovalRequests />}
                 />
                 <Route path="/signed-in-users" element={<SignedInUsers />} />
+                <Route path="/audit-log" element={<AuditLog />} />
               </Route>
 
               {/* Ui Elements */}

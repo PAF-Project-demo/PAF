@@ -1,6 +1,7 @@
 package com.server.server.resource.controller;
 
 import com.server.server.resource.dto.ResourceDTO;
+import com.server.server.resource.dto.ReviewDTO;
 import com.server.server.resource.entity.ResourceStatus;
 import com.server.server.resource.entity.ResourceType;
 import com.server.server.resource.service.ResourceService;
@@ -143,5 +144,21 @@ public class ResourceController {
         dto.setCreatedAt(LocalDateTime.now());
         dto.setUpdatedAt(LocalDateTime.now());
         return dto;
+    @PostMapping("/{id}/reviews")
+    public ResponseEntity<ResourceDTO> addReviewToResource(
+            @RequestHeader(value = "X-Auth-User-Id", required = true) String userId,
+            @PathVariable String id,
+            @Valid @RequestBody ReviewDTO reviewDTO) {
+        ResourceDTO updated = resourceService.addReviewToResource(id, reviewDTO, userId);
+        return new ResponseEntity<>(updated, HttpStatus.CREATED);
+    }
+
+    @DeleteMapping("/{id}/reviews/{reviewId}")
+    public ResponseEntity<ResourceDTO> deleteReviewFromResource(
+            @RequestHeader(value = "X-Auth-User-Id", required = true) String userId,
+            @PathVariable String id,
+            @PathVariable String reviewId) {
+        ResourceDTO updated = resourceService.deleteReviewFromResource(id, reviewId, userId);
+        return ResponseEntity.ok(updated);
     }
 }

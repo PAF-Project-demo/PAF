@@ -2,6 +2,15 @@ import { getStoredAuthSession, authApiBaseUrl, clearAuthSession } from "./auth";
 
 const API_BASE_URL = `${authApiBaseUrl}/api/resources`;
 
+export interface Review {
+  id?: string;
+  userId: string;
+  userName?: string;
+  rating: number;
+  comment?: string;
+  createdAt?: string;
+}
+
 export interface Resource {
   id?: string;
   name: string;
@@ -14,6 +23,8 @@ export interface Resource {
   imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
+  reviews?: Review[];
+  averageRating?: number;
 }
 
 const getHeaders = (): HeadersInit => {
@@ -127,6 +138,38 @@ export const updateResourceStatus = async (id: string, status: "ACTIVE" | "OUT_O
   
   if (!response.ok) {
     throw new Error("Failed to update resource status");
+  }
+  
+  return await response.json() as Resource;
+};
+
+export const addResourceReview = async (id: string, review: { rating: number; comment?: string }) => {
+  const response = await fetch(`${API_BASE_URL}/${id}/reviews`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(review),
+    credentials: "include",
+  });
+  
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) clearAuthSession();
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Failed to add review. Server responded with: ${response.status} ${errorText}`);
+  }
+  
+  return await response.json() as Resource;
+};
+
+export const deleteResourceReview = async (resourceId: string, reviewId: string) => {
+  const response = await fetch(`${API_BASE_URL}/${resourceId}/reviews/${reviewId}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+    credentials: "include",
+  });
+  
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) clearAuthSession();
+    throw new Error(`Failed to delete review.`);
   }
   
   return await response.json() as Resource;
