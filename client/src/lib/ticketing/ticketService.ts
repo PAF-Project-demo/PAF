@@ -11,6 +11,7 @@ import {
   STUDENT_TICKET_CATEGORIES,
 } from "./catalog";
 import { initialMockTicketingData, type TicketingMockDatabase } from "./mockData";
+import { determineTicketPriority } from "./priority";
 import type {
   CreateTicketInput,
   DashboardSummary,
@@ -250,7 +251,6 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
           title: input.title,
           description: input.description,
           type: input.type,
-          priority: input.priority,
           category: input.category,
           status: input.status,
           location: input.location,
@@ -276,8 +276,12 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
   const db = readMockDb();
   const currentUser = getCurrentTicketUser(db);
   const now = new Date();
-  const isStudent = currentUser.role === "USER";
-  const initialPriority = isStudent ? "MEDIUM" : input.priority;
+  const initialPriority = determineTicketPriority({
+    title: input.title,
+    description: input.description,
+    type: input.type,
+    category: input.category,
+  });
   const resolvedSlaHours =
     input.slaHours && input.slaHours > 0
       ? input.slaHours
@@ -323,7 +327,7 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
       {
         id: uid("activity"),
         action: "TICKET_CREATED",
-        message: "Ticket created.",
+        message: `Ticket created with ${initialPriority} priority.`,
         createdAt: now.toISOString(),
         actor: {
           id: currentUser.id,

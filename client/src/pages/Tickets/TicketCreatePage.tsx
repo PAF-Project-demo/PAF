@@ -28,7 +28,6 @@ export default function TicketCreatePage() {
     title: "",
     description: "",
     type: "MAINTENANCE",
-    priority: "MEDIUM",
     category: "",
     location: {
       building: "",
@@ -122,7 +121,7 @@ export default function TicketCreatePage() {
 
         <ComponentCard
           title="New Maintenance / Incident Ticket"
-          desc="Students can submit a ticket here and then track progress while technicians and admins handle workflow updates."
+          desc="Students submit the issue details here. The system automatically evaluates urgency and assigns a priority for staff follow-up."
         >
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <div className="lg:col-span-2">
@@ -178,6 +177,14 @@ export default function TicketCreatePage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="lg:col-span-2">
+              <div className="rounded-2xl border border-brand-200 bg-brand-50 px-4 py-4 text-sm text-brand-700 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-200">
+                Priority is assigned automatically after submission using the ticket
+                type, category, and issue description. Technicians and admins can
+                review it later if needed.
+              </div>
             </div>
 
             <div className="lg:col-span-2">

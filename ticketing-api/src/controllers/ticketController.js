@@ -1,6 +1,7 @@
 import { Ticket } from "../models/Ticket.js";
 import { User } from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { determinePriority } from "../utils/determinePriority.js";
 import { createHttpError } from "../utils/httpError.js";
 import { buildTicketId } from "../utils/generateTicketId.js";
 
@@ -177,7 +178,6 @@ export const createTicket = asyncHandler(async (req, res) => {
     title,
     description,
     type,
-    priority = "MEDIUM",
     category,
     location,
     slaHours,
@@ -190,7 +190,12 @@ export const createTicket = asyncHandler(async (req, res) => {
     );
   }
 
-  const initialPriority = req.user.role === "USER" ? "MEDIUM" : priority;
+  const initialPriority = determinePriority({
+    title,
+    description,
+    type,
+    category,
+  });
   const finalSlaHours =
     req.user.role === "USER"
       ? resolveSlaHours(initialPriority)
@@ -213,7 +218,7 @@ export const createTicket = asyncHandler(async (req, res) => {
     activity: [
       {
         action: "TICKET_CREATED",
-        message: "Ticket created.",
+        message: `Ticket created with ${initialPriority} priority.`,
         actor: actorFromUser(req.user),
         meta: {
           priority: initialPriority,
