@@ -124,7 +124,7 @@ export default function TicketDashboardPage() {
             desc="Quick view of the latest requests and their current SLA state."
           >
             <div className="mb-2 flex justify-end">
-              <Link to="/tickets">
+              <Link to="/dashboard/ticket-queue">
                 <Button variant="outline">View full queue</Button>
               </Link>
             </div>

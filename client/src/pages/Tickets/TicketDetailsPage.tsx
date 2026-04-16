@@ -120,7 +120,7 @@ export default function TicketDetailsPage() {
         </div>
 
         <div className="flex gap-3">
-          <Link to="/tickets">
+          <Link to="/dashboard/ticket-queue">
             <Button variant="outline">Back to list</Button>
           </Link>
         </div>

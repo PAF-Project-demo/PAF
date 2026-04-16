@@ -58,7 +58,7 @@ export default function TicketListPage() {
                 filters.
               </p>
             </div>
-            <Link to="/tickets/new">
+            <Link to="/dashboard/create-ticket">
               <Button>Create ticket</Button>
             </Link>
           </div>

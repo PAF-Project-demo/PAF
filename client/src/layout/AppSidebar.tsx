@@ -6,7 +6,6 @@ import {
   ChevronDownIcon,
   GroupIcon,
   PieChartIcon,
-  PlusIcon,
   TaskIcon,
   HorizontaLDots,
   UserCircleIcon,
@@ -36,22 +35,16 @@ const navItems: NavItem[] = [
   {
     icon: <TaskIcon />,
     name: "Ticket Dashboard",
-    path: "/tickets/dashboard",
-  },
-  {
-    icon: <PlusIcon />,
-    name: "Create Ticket",
-    path: "/tickets/new",
-  },
-  {
-    icon: <BoxCubeIcon />,
-    name: "Ticket Queue",
-    path: "/tickets",
+    path: "/dashboard",
+    subItems: [
+      { name: "Create Ticket", path: "/dashboard/create-ticket" },
+      { name: "Ticket Queue", path: "/dashboard/ticket-queue" },
+    ],
   },
   {
     icon: <PieChartIcon />,
     name: "Reports",
-    path: "/tickets/reports",
+    path: "/reports",
     roles: ["ADMIN", "TECHNICIAN"],
   },
   {
@@ -99,21 +92,26 @@ const AppSidebar: React.FC = () => {
     [location.pathname]
   );
 
+  const isNavItemActive = useCallback(
+    (nav: NavItem) =>
+      Boolean(
+        (nav.path && isActive(nav.path)) ||
+          nav.subItems?.some((subItem) => isActive(subItem.path))
+      ),
+    [isActive]
+  );
+
   useEffect(() => {
     let submenuMatched = false;
     ["main"].forEach((menuType) => {
       const items = menuType === "main" ? navItems : [];
       items.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index,
-              });
-              submenuMatched = true;
-            }
+        if (nav.subItems && isNavItemActive(nav)) {
+          setOpenSubmenu({
+            type: menuType as "main" | "others",
+            index,
           });
+          submenuMatched = true;
         }
       });
     });
@@ -121,7 +119,7 @@ const AppSidebar: React.FC = () => {
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [location, isActive]);
+  }, [location, isActive, isNavItemActive]);
 
   useEffect(() => {
     if (openSubmenu !== null) {
@@ -188,37 +186,64 @@ const AppSidebar: React.FC = () => {
       {items.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
-            <button
-              onClick={() => handleSubmenuToggle(index, menuType)}
-              className={`menu-item group ${openSubmenu?.type === menuType && openSubmenu?.index === index
-                  ? "menu-item-active"
-                  : "menu-item-inactive"
-                } cursor-pointer ${!isExpanded && !isHovered
-                  ? "lg:justify-center"
-                  : "lg:justify-start"
-                }`}
+            <div
+              className={`menu-item group ${
+                isNavItemActive(nav) ? "menu-item-active" : "menu-item-inactive"
+              } ${!isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"}`}
             >
-              <span
-                className={`menu-item-icon-size  ${openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? "menu-item-icon-active"
-                    : "menu-item-icon-inactive"
+              {nav.path ? (
+                <Link
+                  to={nav.path}
+                  className={`flex min-w-0 flex-1 items-center gap-3 ${
+                    !isExpanded && !isHovered && !isMobileOpen ? "lg:justify-center" : ""
                   }`}
-              >
-                {nav.icon}
-              </span>
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <span className="menu-item-text">{nav.name}</span>
-              )}
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <ChevronDownIcon
-                  className={`ml-auto w-5 h-5 transition-transform duration-200 ${openSubmenu?.type === menuType &&
-                      openSubmenu?.index === index
-                      ? "rotate-180 text-brand-500"
-                      : ""
+                >
+                  <span
+                    className={`menu-item-icon-size ${
+                      isNavItemActive(nav)
+                        ? "menu-item-icon-active"
+                        : "menu-item-icon-inactive"
                     }`}
-                />
+                  >
+                    {nav.icon}
+                  </span>
+                  {(isExpanded || isHovered || isMobileOpen) && (
+                    <span className="menu-item-text">{nav.name}</span>
+                  )}
+                </Link>
+              ) : (
+                <>
+                  <span
+                    className={`menu-item-icon-size ${
+                      isNavItemActive(nav)
+                        ? "menu-item-icon-active"
+                        : "menu-item-icon-inactive"
+                    }`}
+                  >
+                    {nav.icon}
+                  </span>
+                  {(isExpanded || isHovered || isMobileOpen) && (
+                    <span className="menu-item-text">{nav.name}</span>
+                  )}
+                </>
               )}
-            </button>
+              {(isExpanded || isHovered || isMobileOpen) && (
+                <button
+                  type="button"
+                  onClick={() => handleSubmenuToggle(index, menuType)}
+                  className="ml-auto flex h-5 w-5 items-center justify-center"
+                  aria-label={`Toggle ${nav.name} submenu`}
+                >
+                  <ChevronDownIcon
+                    className={`w-5 h-5 transition-transform duration-200 ${
+                      openSubmenu?.type === menuType && openSubmenu?.index === index
+                        ? "rotate-180 text-brand-500"
+                        : ""
+                    }`}
+                  />
+                </button>
+              )}
+            </div>
           ) : (
             nav.path && (
               <Link

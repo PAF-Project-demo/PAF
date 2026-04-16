@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
@@ -48,13 +48,13 @@ export default function App() {
           <Route element={<RequireAuth />}>
             {/* Dashboard Layout */}
             <Route element={<AppLayout />}>
-              <Route path="/" element={<TicketDashboardPage />} />
-              <Route path="/tickets/dashboard" element={<TicketDashboardPage />} />
-              <Route path="/tickets" element={<TicketListPage />} />
-              <Route path="/tickets/new" element={<TicketCreatePage />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<TicketDashboardPage />} />
+              <Route path="/dashboard/create-ticket" element={<TicketCreatePage />} />
+              <Route path="/dashboard/ticket-queue" element={<TicketListPage />} />
               <Route path="/tickets/:id" element={<TicketDetailsPage />} />
               <Route element={<RequireStaff />}>
-                <Route path="/tickets/reports" element={<TicketReportsPage />} />
+                <Route path="/reports" element={<TicketReportsPage />} />
               </Route>
 
               {/* Others Page */}
