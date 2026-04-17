@@ -7,8 +7,8 @@ export default function SignedInUsers() {
   return (
     <>
       <PageMeta
-        title="Signed-In Users | PAF Auth Dashboard"
-        description="View signed-in users, their providers, joined dates, and roles."
+        title="EduNexus"
+        description="EduNexus - Student Management System"
       />
       <PageBreadcrumb pageTitle="Signed-In Users" />
       <div className="space-y-6">

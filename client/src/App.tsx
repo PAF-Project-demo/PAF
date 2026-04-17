@@ -38,6 +38,9 @@ import ResourceListPage from "./pages/Facilities/ResourceListPage";
 import ResourceDetailPage from "./pages/Facilities/ResourceDetailPage";
 import ResourceFormPage from "./pages/Facilities/ResourceFormPage";
 
+// Resource Booking Pages
+import { ResourceBookingPage } from "./pages/ResourceBooking";
+
 export default function App() {
   return (
     <>
@@ -69,6 +72,9 @@ export default function App() {
                 <Route path="/resources/new" element={<ResourceFormPage />} />
                 <Route path="/resources/:id/edit" element={<ResourceFormPage />} />
               </Route>
+
+              {/* Resource Booking */}
+              <Route path="/bookings" element={<ResourceBookingPage />} />
 
               {/* Forms */}
               <Route path="/form-elements" element={<FormElements />} />

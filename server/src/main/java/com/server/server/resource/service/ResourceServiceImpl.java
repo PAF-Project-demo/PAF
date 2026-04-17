@@ -160,6 +160,7 @@ public class ResourceServiceImpl implements ResourceService {
         entity.setCapacity(dto.getCapacity());
         entity.setLocation(dto.getLocation());
         entity.setAvailabilityWindows(dto.getAvailabilityWindows());
+        entity.setDescription(dto.getDescription());
         entity.setImageUrl(dto.getImageUrl());
         if (dto.getStatus() != null) {
             entity.setStatus(dto.getStatus());
@@ -175,6 +176,7 @@ public class ResourceServiceImpl implements ResourceService {
         dto.setLocation(entity.getLocation());
         dto.setAvailabilityWindows(entity.getAvailabilityWindows());
         dto.setStatus(entity.getStatus());
+        dto.setDescription(entity.getDescription());
         dto.setImageUrl(entity.getImageUrl());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());

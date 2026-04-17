@@ -86,3 +86,7 @@ linken developer : https://www.linkedin.com/developers/apps/232180433
 
 
 gitgub :- https://github.com/settings/applications/3514299
+<<<<<<< HEAD
+=======
+hi
+>>>>>>> de08b060aac71d6c81fb0697dee073f72cd101b8

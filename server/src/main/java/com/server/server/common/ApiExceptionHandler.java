@@ -7,6 +7,9 @@ import com.server.server.auth.exception.InvalidCredentialsException;
 import com.server.server.user.exception.InvalidRoleRequestException;
 import com.server.server.user.exception.RoleRequestNotFoundException;
 import com.server.server.user.exception.UserNotFoundException;
+import com.server.server.booking.exception.TimeConflictException;
+import com.server.server.booking.exception.BookingNotFoundException;
+import com.server.server.booking.exception.InvalidBookingException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -77,6 +80,21 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> handleResourceNotFound(ResourceNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler(BookingNotFoundException.class)
+    public ResponseEntity<ApiError> handleBookingNotFound(BookingNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler(TimeConflictException.class)
+    public ResponseEntity<ApiError> handleTimeConflict(TimeConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidBookingException.class)
+    public ResponseEntity<ApiError> handleInvalidBooking(InvalidBookingException exception) {
+        return ResponseEntity.badRequest().body(new ApiError(exception.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
