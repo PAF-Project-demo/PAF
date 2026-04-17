@@ -7,7 +7,11 @@ import PageMeta from "../../components/common/PageMeta";
 import Button from "../../components/ui/button/Button";
 import TicketFiltersBar from "../../components/tickets/TicketFiltersBar";
 import TicketTable from "../../components/tickets/TicketTable";
-import { fetchTicketMeta, fetchTickets } from "../../lib/ticketing/ticketService";
+import {
+  fetchTicketMeta,
+  fetchTickets,
+  subscribeToTicketDataChanges,
+} from "../../lib/ticketing/ticketService";
 import type { TicketFilters, TicketMeta, TicketRecord } from "../../lib/ticketing/types";
 
 export default function TicketListPage() {
@@ -25,17 +29,31 @@ export default function TicketListPage() {
   }, []);
 
   useEffect(() => {
+    let isActive = true;
+
     const loadTickets = async () => {
       setIsLoading(true);
       try {
         const result = await fetchTickets(filters);
-        setTickets(result.items);
+        if (isActive) {
+          setTickets(result.items);
+        }
       } finally {
-        setIsLoading(false);
+        if (isActive) {
+          setIsLoading(false);
+        }
       }
     };
 
     void loadTickets();
+    const unsubscribe = subscribeToTicketDataChanges(() => {
+      void loadTickets();
+    });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
   }, [filters]);
 
   return (

@@ -65,6 +65,7 @@ export interface TicketRecord {
   location: TicketLocation;
   reporter: TicketUser;
   assignedTechnician: TicketUser | null;
+  requiresExtendedResolution?: boolean;
   slaHours: number;
   dueAt: string;
   overdue: boolean;
@@ -108,6 +109,7 @@ export interface DashboardSummary {
     overdueTickets: number;
     resolvedRate: number;
   };
+  slaBuckets: Array<{ label: string; value: number; description: string }>;
   charts: {
     statusBreakdown: Array<{ label: string; value: number }>;
     priorityBreakdown: Array<{ label: string; value: number }>;
@@ -115,6 +117,13 @@ export interface DashboardSummary {
     typeBreakdown: Array<{ label: string; value: number }>;
   };
   recentTickets: TicketRecord[];
+}
+
+export interface TicketSlaPolicy {
+  targetHours: number;
+  targetLabel: string;
+  description: string;
+  workflowPath: TicketStatus[];
 }
 
 export interface TicketReports {
@@ -135,6 +144,7 @@ export interface CreateTicketInput {
   priority: TicketPriority;
   category: string;
   status?: TicketStatus;
+  requiresExtendedResolution?: boolean;
   location: TicketLocation;
   slaHours?: number;
   attachments?: File[];
@@ -146,6 +156,7 @@ export interface UpdateTicketInput {
   category?: string;
   description?: string;
   location?: TicketLocation;
+  requiresExtendedResolution?: boolean;
   slaHours?: number;
   assignedTechnician?: TicketUser | null;
 }

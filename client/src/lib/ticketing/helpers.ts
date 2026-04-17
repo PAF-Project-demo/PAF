@@ -5,6 +5,7 @@ import type {
   TicketRecord,
   TicketReports,
   TicketRole,
+  TicketSlaPolicy,
   TicketStatus,
 } from "./types";
 
@@ -23,6 +24,17 @@ const dashboardPriorityOrder: TicketPriority[] = [
   "HIGH",
   "CRITICAL",
 ];
+
+const closedStatuses: TicketStatus[] = ["RESOLVED", "CLOSED", "CANCELLED"];
+
+const workflowTransitions: Record<TicketStatus, TicketStatus[]> = {
+  OPEN: ["OPEN", "IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["IN_PROGRESS", "ON_HOLD", "RESOLVED", "CANCELLED"],
+  ON_HOLD: ["ON_HOLD", "IN_PROGRESS", "RESOLVED", "CANCELLED"],
+  RESOLVED: ["RESOLVED", "CLOSED", "IN_PROGRESS"],
+  CLOSED: ["CLOSED"],
+  CANCELLED: ["CANCELLED"],
+};
 
 export function formatTicketLocation(ticketLocation: TicketRecord["location"]) {
   return [
@@ -47,8 +59,59 @@ export function formatDateTime(value?: string | null) {
 }
 
 export function isTicketOverdue(ticket: Pick<TicketRecord, "dueAt" | "status">) {
-  const closedStatuses: TicketStatus[] = ["RESOLVED", "CLOSED", "CANCELLED"];
   return !closedStatuses.includes(ticket.status) && new Date(ticket.dueAt) < new Date();
+}
+
+export function getTicketSlaPolicy(ticket: Pick<TicketRecord, "priority"> & {
+  requiresExtendedResolution?: boolean;
+}): TicketSlaPolicy {
+  if (ticket.requiresExtendedResolution) {
+    return {
+      targetHours: 72,
+      targetLabel: "Extended repair window",
+      description: "Major or large repairs can stay open longer with a planned follow-up window.",
+      workflowPath: ["OPEN", "IN_PROGRESS", "ON_HOLD", "RESOLVED"],
+    };
+  }
+
+  if (ticket.priority === "HIGH" || ticket.priority === "CRITICAL") {
+    return {
+      targetHours: 48,
+      targetLabel: "2-day target",
+      description: "High and critical work is expected to be resolved within about 2 days.",
+      workflowPath: ["OPEN", "IN_PROGRESS", "ON_HOLD", "RESOLVED"],
+    };
+  }
+
+  return {
+    targetHours: 12,
+    targetLabel: "Same-day target",
+    description: "Low and medium work should normally move from Open to In Progress to Resolved.",
+    workflowPath: ["OPEN", "IN_PROGRESS", "RESOLVED"],
+  };
+}
+
+export function getTicketDueAt(ticket: Pick<TicketRecord, "createdAt" | "priority"> & {
+  requiresExtendedResolution?: boolean;
+}) {
+  const { targetHours } = getTicketSlaPolicy(ticket);
+  return new Date(Date.parse(ticket.createdAt) + targetHours * 60 * 60 * 1000).toISOString();
+}
+
+export function synchronizeTicketComputedFields(ticket: TicketRecord): TicketRecord {
+  const policy = getTicketSlaPolicy(ticket);
+  const dueAt = getTicketDueAt(ticket);
+
+  return {
+    ...ticket,
+    requiresExtendedResolution: Boolean(ticket.requiresExtendedResolution),
+    slaHours: policy.targetHours,
+    dueAt,
+    overdue: isTicketOverdue({
+      dueAt,
+      status: ticket.status,
+    }),
+  };
 }
 
 export function getStatusColor(status: TicketStatus) {
@@ -108,6 +171,31 @@ export function canViewReports(role?: string | null) {
   return role === "TECHNICIAN" || role === "ADMIN";
 }
 
+export function getAllowedStatusOptions(ticket: Pick<TicketRecord, "status" | "priority"> & {
+  requiresExtendedResolution?: boolean;
+}) {
+  const nextOptions = workflowTransitions[ticket.status] ?? [ticket.status];
+
+  return nextOptions.filter((status) => {
+    if (status !== "ON_HOLD") {
+      return true;
+    }
+
+    return (
+      ticket.requiresExtendedResolution ||
+      ticket.priority === "HIGH" ||
+      ticket.priority === "CRITICAL"
+    );
+  });
+}
+
+export function canTransitionTicket(
+  ticket: Pick<TicketRecord, "status" | "priority"> & { requiresExtendedResolution?: boolean },
+  nextStatus: TicketStatus
+) {
+  return getAllowedStatusOptions(ticket).includes(nextStatus);
+}
+
 function getLastSixMonthLabels() {
   const formatter = new Intl.DateTimeFormat(undefined, {
     month: "short",
@@ -165,11 +253,21 @@ export function buildDashboardSummary(tickets: TicketRecord[]): DashboardSummary
   const priorityMap = new Map<string, number>();
   const monthlyMap = new Map<string, number>();
   const typeMap = new Map<string, number>();
+  const slaBucketMap = new Map<string, number>([
+    ["Same-day target", 0],
+    ["2-day target", 0],
+    ["Extended repair window", 0],
+  ]);
 
   tickets.forEach((ticket) => {
     statusMap.set(ticket.status, (statusMap.get(ticket.status) ?? 0) + 1);
     priorityMap.set(ticket.priority, (priorityMap.get(ticket.priority) ?? 0) + 1);
     typeMap.set(ticket.type, (typeMap.get(ticket.type) ?? 0) + 1);
+    const slaPolicy = getTicketSlaPolicy(ticket);
+    slaBucketMap.set(
+      slaPolicy.targetLabel,
+      (slaBucketMap.get(slaPolicy.targetLabel) ?? 0) + 1
+    );
 
     const monthKey = new Date(ticket.createdAt).toLocaleString(undefined, {
       month: "short",
@@ -191,6 +289,23 @@ export function buildDashboardSummary(tickets: TicketRecord[]): DashboardSummary
       overdueTickets: tickets.filter((ticket) => isTicketOverdue(ticket)).length,
       resolvedRate: tickets.length ? Math.round((resolvedCount / tickets.length) * 100) : 0,
     },
+    slaBuckets: [
+      {
+        label: "Same-day target",
+        value: slaBucketMap.get("Same-day target") ?? 0,
+        description: "Low and medium priority tickets expected to close within the day.",
+      },
+      {
+        label: "2-day target",
+        value: slaBucketMap.get("2-day target") ?? 0,
+        description: "High and critical tickets that can take up to around 2 days.",
+      },
+      {
+        label: "Extended repair window",
+        value: slaBucketMap.get("Extended repair window") ?? 0,
+        description: "Major or large repairs intentionally given extra time.",
+      },
+    ],
     charts: {
       statusBreakdown: dashboardStatusOrder.map((label) => ({
         label,

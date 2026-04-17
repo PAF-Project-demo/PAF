@@ -13,14 +13,15 @@ import {
   canManageTickets,
   formatDateTime,
   formatTicketLocation,
+  getAllowedStatusOptions,
   getTicketDueLabel,
+  getTicketSlaPolicy,
 } from "../../lib/ticketing/helpers";
 import {
   addTicketComment,
   assignTechnician,
   fetchTicketById,
   fetchTicketMeta,
-  getAvailableStatuses,
   getCurrentUserRole,
   updateTicket,
   uploadTicketAttachments,
@@ -39,12 +40,28 @@ export default function TicketDetailsPage() {
   const [workflowMessage, setWorkflowMessage] = useState("");
   const [status, setStatus] = useState<TicketStatus>("OPEN");
   const [priority, setPriority] = useState<TicketPriority>("MEDIUM");
+  const [requiresExtendedResolution, setRequiresExtendedResolution] = useState(false);
   const [technicianId, setTechnicianId] = useState("");
   const currentRole = getCurrentUserRole();
 
   const canManage = useMemo(() => canManageTickets(currentRole), [currentRole]);
   const isAdmin = currentRole === "ADMIN";
   const isStudent = !canManage;
+  const slaPolicy = useMemo(
+    () => getTicketSlaPolicy({ priority, requiresExtendedResolution }),
+    [priority, requiresExtendedResolution]
+  );
+  const availableStatuses = useMemo(
+    () =>
+      ticket
+        ? getAllowedStatusOptions({
+            status: ticket.status,
+            priority,
+            requiresExtendedResolution,
+          })
+        : (["OPEN"] as TicketStatus[]),
+    [priority, requiresExtendedResolution, ticket]
+  );
 
   const loadTicket = async () => {
     setIsLoading(true);
@@ -58,6 +75,7 @@ export default function TicketDetailsPage() {
       setMeta(ticketMeta);
       setStatus(ticketItem.status);
       setPriority(ticketItem.priority);
+      setRequiresExtendedResolution(Boolean(ticketItem.requiresExtendedResolution));
       setTechnicianId(ticketItem.assignedTechnician?.id ?? "");
     } finally {
       setIsLoading(false);
@@ -67,6 +85,12 @@ export default function TicketDetailsPage() {
   useEffect(() => {
     void loadTicket();
   }, [id]);
+
+  useEffect(() => {
+    if (ticket && !availableStatuses.includes(status)) {
+      setStatus(availableStatuses[0] ?? ticket.status);
+    }
+  }, [availableStatuses, status, ticket]);
 
   if (isLoading || !ticket) {
     return (
@@ -91,15 +115,34 @@ export default function TicketDetailsPage() {
     setWorkflowMessage("");
 
     try {
-      let nextTicket = await updateTicket(ticket.id, { status, priority });
+      let nextTicket = ticket;
 
       if (isAdmin && technicianId && technicianId !== ticket.assignedTechnician?.id) {
         nextTicket = await assignTechnician(ticket.id, technicianId);
       }
 
+      if (isAdmin && !technicianId && ticket.assignedTechnician) {
+        nextTicket = await updateTicket(ticket.id, {
+          assignedTechnician: null,
+        });
+      }
+
+      if (
+        status !== nextTicket.status ||
+        priority !== nextTicket.priority ||
+        requiresExtendedResolution !== Boolean(nextTicket.requiresExtendedResolution)
+      ) {
+        nextTicket = await updateTicket(ticket.id, {
+          status,
+          priority,
+          requiresExtendedResolution,
+        });
+      }
+
       setTicket(nextTicket);
       setStatus(nextTicket.status);
       setPriority(nextTicket.priority);
+      setRequiresExtendedResolution(Boolean(nextTicket.requiresExtendedResolution));
       setTechnicianId(nextTicket.assignedTechnician?.id ?? "");
       setWorkflowMessage("Workflow updated successfully.");
     } catch (error) {
@@ -191,6 +234,30 @@ export default function TicketDetailsPage() {
                   {formatDateTime(ticket.createdAt)}
                 </p>
               </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Expected resolution
+                </p>
+                <p className="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  {slaPolicy.targetLabel}
+                </p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {slaPolicy.description}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Workflow target
+                </p>
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                  {slaPolicy.workflowPath.map((item) => item.replace(/_/g, " ")).join(" -> ")}
+                </p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {ticket.requiresExtendedResolution
+                    ? "Extended timing is active for a major or large repair."
+                    : "Standard rule-based workflow is active for this ticket."}
+                </p>
+              </div>
             </div>
           </ComponentCard>
 
@@ -226,6 +293,18 @@ export default function TicketDetailsPage() {
                 </div>
 
                 <div className="space-y-3">
+                  <div className="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      SLA expectation
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                      {slaPolicy.targetLabel}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {slaPolicy.workflowPath.map((item) => item.replace(/_/g, " ")).join(" -> ")}
+                    </p>
+                  </div>
+
                   <div className="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800">
                     <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                       Current status
@@ -270,6 +349,24 @@ export default function TicketDetailsPage() {
                   will be visible to the student as tracking updates.
                 </div>
 
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/40">
+                  <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    SLA rule
+                  </p>
+                  <p className="mt-2 text-base font-semibold text-gray-900 dark:text-white">
+                    {slaPolicy.targetLabel}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {slaPolicy.description}
+                  </p>
+                  <p className="mt-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Recommended workflow
+                  </p>
+                  <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                    {slaPolicy.workflowPath.map((item) => item.replace(/_/g, " ")).join(" -> ")}
+                  </p>
+                </div>
+
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Status
@@ -280,12 +377,15 @@ export default function TicketDetailsPage() {
                     disabled={!canManage || isSavingWorkflow}
                     onChange={(event) => setStatus(event.target.value as TicketStatus)}
                   >
-                    {getAvailableStatuses().map((item) => (
+                    {availableStatuses.map((item) => (
                       <option key={item} value={item}>
                         {item.replace(/_/g, " ")}
                       </option>
                     ))}
                   </select>
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Available stages are based on the current workflow position and SLA rule.
+                  </p>
                 </div>
 
                 <div>
@@ -327,6 +427,25 @@ export default function TicketDetailsPage() {
                     Only admins can assign technicians. Technicians and admins can update status.
                   </p>
                 </div>
+
+                <label className="flex items-start gap-3 rounded-2xl border border-gray-200 px-4 py-4 dark:border-gray-800">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-200"
+                    checked={requiresExtendedResolution}
+                    disabled={!canManage || isSavingWorkflow}
+                    onChange={(event) => setRequiresExtendedResolution(event.target.checked)}
+                  />
+                  <span className="space-y-1">
+                    <span className="block text-sm font-medium text-gray-800 dark:text-gray-100">
+                      Mark as major or large repair
+                    </span>
+                    <span className="block text-xs leading-5 text-gray-500 dark:text-gray-400">
+                      Use this when the issue needs a longer planned repair window and may need
+                      Pending status while work is coordinated.
+                    </span>
+                  </span>
+                </label>
 
                 {workflowMessage ? (
                   <div className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:text-gray-300">

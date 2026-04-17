@@ -124,6 +124,7 @@ export const initialMockTicketingData: TicketingMockDatabase = {
       },
       reporter: users[3],
       assignedTechnician: users[1],
+      requiresExtendedResolution: true,
       slaHours: 8,
       dueAt: new Date(now + 2 * 60 * 60 * 1000).toISOString(),
       overdue: false,

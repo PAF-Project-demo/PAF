@@ -3,6 +3,7 @@ import {
   formatDateTime,
   formatTicketLocation,
   getTicketDueLabel,
+  getTicketSlaPolicy,
 } from "../../lib/ticketing/helpers";
 import type { TicketRecord } from "../../lib/ticketing/types";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../ui/table";
@@ -79,6 +80,10 @@ export default function TicketTable({ tickets }: { tickets: TicketRecord[] }) {
                     <p>{getTicketDueLabel(ticket)}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Due {formatDateTime(ticket.dueAt)}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {getTicketSlaPolicy(ticket).targetLabel}
+                      {ticket.requiresExtendedResolution ? " | extended repair" : ""}
                     </p>
                   </div>
                 </TableCell>

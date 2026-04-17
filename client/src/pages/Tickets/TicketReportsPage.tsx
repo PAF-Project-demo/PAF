@@ -5,18 +5,31 @@ import LoadingIndicator from "../../components/common/LoadingIndicator";
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import TicketSummaryCard from "../../components/tickets/TicketSummaryCard";
-import { fetchReports } from "../../lib/ticketing/ticketService";
+import { fetchReports, subscribeToTicketDataChanges } from "../../lib/ticketing/ticketService";
 import type { TicketReports } from "../../lib/ticketing/types";
 
 export default function TicketReportsPage() {
   const [reports, setReports] = useState<TicketReports | null>(null);
 
   useEffect(() => {
+    let isActive = true;
+
     const load = async () => {
-      setReports(await fetchReports());
+      const nextReports = await fetchReports();
+      if (isActive) {
+        setReports(nextReports);
+      }
     };
 
     void load();
+    const unsubscribe = subscribeToTicketDataChanges(() => {
+      void load();
+    });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
   }, []);
 
   return (

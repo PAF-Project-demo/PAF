@@ -6,11 +6,18 @@ import LoadingIndicator from "../../components/common/LoadingIndicator";
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import Button from "../../components/ui/button/Button";
-import TicketPriorityBadge from "../../components/tickets/TicketPriorityBadge";
 import TicketStatusBadge from "../../components/tickets/TicketStatusBadge";
 import TicketSummaryCard from "../../components/tickets/TicketSummaryCard";
-import { formatDateTime, formatTicketLocation } from "../../lib/ticketing/helpers";
-import { fetchDashboardSummary } from "../../lib/ticketing/ticketService";
+import TicketPriorityBadge from "../../components/tickets/TicketPriorityBadge";
+import {
+  formatDateTime,
+  formatTicketLocation,
+  getTicketSlaPolicy,
+} from "../../lib/ticketing/helpers";
+import {
+  fetchDashboardSummary,
+  subscribeToTicketDataChanges,
+} from "../../lib/ticketing/ticketService";
 import type { DashboardSummary } from "../../lib/ticketing/types";
 
 const statusPresentation: Record<
@@ -56,6 +63,21 @@ const priorityPresentation: Record<string, { color: string; accent: string }> = 
   CRITICAL: { color: "#ef4444", accent: "bg-red-500" },
 };
 
+const slaBucketPresentation: Record<string, { accent: string; surface: string }> = {
+  "Same-day target": {
+    accent: "text-emerald-700 dark:text-emerald-200",
+    surface: "bg-emerald-50 dark:bg-emerald-500/10",
+  },
+  "2-day target": {
+    accent: "text-amber-700 dark:text-amber-200",
+    surface: "bg-amber-50 dark:bg-amber-500/10",
+  },
+  "Extended repair window": {
+    accent: "text-blue-700 dark:text-blue-200",
+    surface: "bg-blue-50 dark:bg-blue-500/10",
+  },
+};
+
 function AnalyticsEmptyState({
   title,
   description,
@@ -79,16 +101,31 @@ export default function TicketDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isActive = true;
+
     const load = async () => {
       setIsLoading(true);
       try {
-        setSummary(await fetchDashboardSummary());
+        const nextSummary = await fetchDashboardSummary();
+        if (isActive) {
+          setSummary(nextSummary);
+        }
       } finally {
-        setIsLoading(false);
+        if (isActive) {
+          setIsLoading(false);
+        }
       }
     };
 
     void load();
+    const unsubscribe = subscribeToTicketDataChanges(() => {
+      void load();
+    });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
   }, []);
 
   const statusItems = useMemo(
@@ -107,6 +144,12 @@ export default function TicketDashboardPage() {
   const statusColors = statusItems.map((item) => item.color);
   const statusTotal = statusSeries.reduce((sum, value) => sum + value, 0);
   const hasStatusData = statusTotal > 0;
+  const activeStatusCount = statusItems.filter((item) => item.value > 0).length;
+  const singleStatusMode = activeStatusCount <= 1;
+  const dominantStatus = statusItems.reduce(
+    (top, item) => (item.value > top.value ? item : top),
+    statusItems[0] ?? { label: "No status", value: 0, color: "#94a3b8", description: "" }
+  );
 
   const trendData = summary?.charts.monthlyTrend ?? [];
   const trendLabels = trendData.map((item) => item.label);
@@ -118,6 +161,7 @@ export default function TicketDashboardPage() {
   const priorityItems = summary?.charts.priorityBreakdown ?? [];
   const priorityTotal = priorityItems.reduce((sum, item) => sum + item.value, 0);
   const typeItems = summary?.charts.typeBreakdown ?? [];
+  const slaBuckets = summary?.slaBuckets ?? [];
 
   return (
     <>
@@ -170,58 +214,109 @@ export default function TicketDashboardPage() {
             >
               {hasStatusData ? (
                 <div className="space-y-5">
-                  <ReactApexChart
-                    type="donut"
-                    height={320}
-                    series={statusSeries}
-                    options={{
-                      labels: statusLabels,
-                      colors: statusColors,
-                      legend: {
-                        show: false,
-                      },
-                      stroke: {
-                        width: 3,
-                        colors: ["#ffffff"],
-                      },
-                      dataLabels: {
-                        enabled: true,
-                        formatter: (value: number) => `${Math.round(value)}%`,
-                        style: {
-                          fontSize: "11px",
-                          fontWeight: "600",
+                  <div className="rounded-[28px] bg-gradient-to-br from-slate-50 via-white to-sky-50 p-4 ring-1 ring-gray-200 dark:from-gray-900 dark:via-gray-900 dark:to-slate-900 dark:ring-gray-800">
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">
+                        {activeStatusCount} active segment{activeStatusCount === 1 ? "" : "s"}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">
+                        Lead stage: {dominantStatus.label}
+                      </span>
+                    </div>
+
+                    <ReactApexChart
+                      type="donut"
+                      height={320}
+                      series={statusSeries}
+                      options={{
+                        chart: {
+                          toolbar: {
+                            show: false,
+                          },
                         },
-                        dropShadow: {
-                          enabled: false,
+                        labels: statusLabels,
+                        colors: statusColors,
+                        legend: {
+                          show: false,
                         },
-                      },
-                      plotOptions: {
-                        pie: {
-                          donut: {
-                            size: "68%",
-                            labels: {
-                              show: true,
-                              total: {
+                        fill: {
+                          type: singleStatusMode ? "gradient" : "solid",
+                          gradient: singleStatusMode
+                            ? {
+                                shade: "light",
+                                type: "diagonal1",
+                                shadeIntensity: 0.35,
+                                gradientToColors: ["#e0f2fe"],
+                                opacityFrom: 1,
+                                opacityTo: 0.85,
+                                stops: [0, 55, 100],
+                              }
+                            : undefined,
+                        },
+                        stroke: {
+                          width: 4,
+                          colors: ["#f8fafc"],
+                        },
+                        states: {
+                          hover: {
+                            filter: {
+                              type: "lighten",
+                            },
+                          },
+                        },
+                        dataLabels: {
+                          enabled: true,
+                          formatter: (value: number) => `${Math.round(value)}%`,
+                          style: {
+                            fontSize: "11px",
+                            fontWeight: "600",
+                          },
+                          dropShadow: {
+                            enabled: false,
+                          },
+                        },
+                        plotOptions: {
+                          pie: {
+                            expandOnClick: false,
+                            donut: {
+                              size: "70%",
+                              background: "#eef2ff",
+                              labels: {
                                 show: true,
-                                label: "Total",
-                                formatter: () => `${statusTotal}`,
+                                name: {
+                                  show: true,
+                                  offsetY: -6,
+                                },
+                                value: {
+                                  show: true,
+                                  fontSize: "22px",
+                                  fontWeight: "700",
+                                  formatter: (value: string) => `${Math.round(Number(value))}%`,
+                                },
+                                total: {
+                                  show: true,
+                                  label: singleStatusMode
+                                    ? `${dominantStatus.label} focus`
+                                    : "Total tickets",
+                                  formatter: () => `${statusTotal}`,
+                                },
                               },
                             },
                           },
                         },
-                      },
-                      tooltip: {
-                        y: {
-                          formatter: (value: number) => {
-                            const percent = statusTotal
-                              ? Math.round((value / statusTotal) * 100)
-                              : 0;
-                            return `${value} tickets (${percent}%)`;
+                        tooltip: {
+                          y: {
+                            formatter: (value: number) => {
+                              const percent = statusTotal
+                                ? Math.round((value / statusTotal) * 100)
+                                : 0;
+                              return `${value} tickets (${percent}%)`;
+                            },
                           },
                         },
-                      },
-                    }}
-                  />
+                      }}
+                    />
+                  </div>
 
                   <div className="grid grid-cols-1 gap-3">
                     {statusItems.map((item) => {
@@ -250,6 +345,15 @@ export default function TicketDashboardPage() {
                             <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
                               {item.description}
                             </p>
+                            <div className="mt-3 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800">
+                              <div
+                                className="h-1.5 rounded-full transition-all"
+                                style={{
+                                  width: `${statusTotal ? Math.max(percent, item.value > 0 ? 10 : 0) : 0}%`,
+                                  backgroundColor: item.color,
+                                }}
+                              />
+                            </div>
                           </div>
                         </div>
                       );
@@ -437,6 +541,42 @@ export default function TicketDashboardPage() {
                   </div>
                 </div>
 
+                <div>
+                  <h4 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+                    Expected SLA windows
+                  </h4>
+                  <div className="space-y-3">
+                    {slaBuckets.map((bucket) => (
+                      <div
+                        key={bucket.label}
+                        className={`rounded-2xl px-4 py-4 ${
+                          slaBucketPresentation[bucket.label]?.surface ??
+                          "bg-gray-50 dark:bg-gray-900/40"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {bucket.label}
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                              {bucket.description}
+                            </p>
+                          </div>
+                          <p
+                            className={`text-2xl font-semibold ${
+                              slaBucketPresentation[bucket.label]?.accent ??
+                              "text-gray-900 dark:text-white"
+                            }`}
+                          >
+                            {bucket.value}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/40">
                   <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     SLA health
@@ -481,43 +621,51 @@ export default function TicketDashboardPage() {
               />
             ) : (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                {summary.recentTickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    className="rounded-2xl border border-gray-200 p-5 dark:border-gray-800"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-500">
-                          {ticket.ticketId}
-                        </p>
-                        <h3 className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
-                          {ticket.title}
-                        </h3>
+                {summary.recentTickets.map((ticket) => {
+                  const slaPolicy = getTicketSlaPolicy(ticket);
+
+                  return (
+                    <div
+                      key={ticket.id}
+                      className="rounded-2xl border border-gray-200 p-5 dark:border-gray-800"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-500">
+                            {ticket.ticketId}
+                          </p>
+                          <h3 className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                            {ticket.title}
+                          </h3>
+                        </div>
+                        <TicketStatusBadge status={ticket.status} />
                       </div>
-                      <TicketStatusBadge status={ticket.status} />
-                    </div>
 
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <TicketPriorityBadge priority={ticket.priority} />
-                      <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                        {ticket.type}
-                      </span>
-                    </div>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <TicketPriorityBadge priority={ticket.priority} />
+                        <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                          {ticket.type}
+                        </span>
+                      </div>
 
-                    <div className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                      <p>{formatTicketLocation(ticket.location)}</p>
-                      <p>Due {formatDateTime(ticket.dueAt)}</p>
-                      <p>Assigned to {ticket.assignedTechnician?.fullName ?? "Unassigned"}</p>
-                    </div>
+                      <div className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                        <p>{formatTicketLocation(ticket.location)}</p>
+                        <p>Due {formatDateTime(ticket.dueAt)}</p>
+                        <p>
+                          SLA target: {slaPolicy.targetLabel}
+                          {ticket.requiresExtendedResolution ? " for major repair" : ""}
+                        </p>
+                        <p>Assigned to {ticket.assignedTechnician?.fullName ?? "Unassigned"}</p>
+                      </div>
 
-                    <div className="mt-5">
-                      <Link to={`/tickets/${ticket.id}`}>
-                        <Button size="sm">Open ticket</Button>
-                      </Link>
+                      <div className="mt-5">
+                        <Link to={`/tickets/${ticket.id}`}>
+                          <Button size="sm">Open ticket</Button>
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </ComponentCard>

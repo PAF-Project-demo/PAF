@@ -4,7 +4,10 @@ import {
   buildDashboardSummary,
   buildReports,
   canManageTickets,
+  canTransitionTicket,
+  getAllowedStatusOptions,
   isTicketOverdue,
+  synchronizeTicketComputedFields,
 } from "./helpers";
 import {
   normalizeTicketCategory,
@@ -26,6 +29,7 @@ import type {
 } from "./types";
 
 const STORAGE_KEY = "paf.ticketing.mock-db.v1";
+const TICKET_DATA_CHANGE_EVENT = "paf.ticketing.data-changed";
 const API_ENABLED = import.meta.env.VITE_TICKETING_ENABLE_API === "true";
 const API_BASE_URL = (import.meta.env.VITE_TICKETING_API_BASE_URL ?? "http://localhost:4000").replace(
   /\/$/,
@@ -80,22 +84,28 @@ function getCurrentTicketUser(db: TicketingMockDatabase): TicketUser {
 }
 
 function normalizeTickets(tickets: TicketRecord[]) {
-  return tickets.map((ticket) => ({
-    ...ticket,
-    category: normalizeTicketCategory(ticket.category),
-    overdue: isTicketOverdue(ticket),
-  }));
+  return tickets.map((ticket) =>
+    synchronizeTicketComputedFields({
+      ...ticket,
+      category: normalizeTicketCategory(ticket.category),
+    })
+  );
 }
 
 function readMockDb(): TicketingMockDatabase {
+  const normalizedInitialData: TicketingMockDatabase = {
+    ...initialMockTicketingData,
+    tickets: normalizeTickets(initialMockTicketingData.tickets),
+  };
+
   if (typeof window === "undefined") {
-    return initialMockTicketingData;
+    return normalizedInitialData;
   }
 
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(initialMockTicketingData));
-    return initialMockTicketingData;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedInitialData));
+    return normalizedInitialData;
   }
 
   try {
@@ -105,8 +115,8 @@ function readMockDb(): TicketingMockDatabase {
       tickets: normalizeTickets(parsed.tickets),
     };
   } catch {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(initialMockTicketingData));
-    return initialMockTicketingData;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedInitialData));
+    return normalizedInitialData;
   }
 }
 
@@ -122,6 +132,7 @@ function writeMockDb(db: TicketingMockDatabase) {
       tickets: normalizeTickets(db.tickets),
     })
   );
+  window.dispatchEvent(new CustomEvent(TICKET_DATA_CHANGE_EVENT));
 }
 
 function buildMeta(db: TicketingMockDatabase): TicketMeta {
@@ -290,10 +301,6 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
   const db = readMockDb();
   const currentUser = getCurrentTicketUser(db);
   const now = new Date();
-  const resolvedSlaHours =
-    input.slaHours && input.slaHours > 0
-      ? input.slaHours
-      : { LOW: 72, MEDIUM: 24, HIGH: 8, CRITICAL: 4 }[input.priority];
 
   const attachments =
     input.attachments?.map((file) => ({
@@ -320,14 +327,15 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
     priority: input.priority,
     category: normalizeTicketCategory(input.category.trim()),
     status: "OPEN",
+    requiresExtendedResolution: Boolean(input.requiresExtendedResolution),
     location: {
       ...input.location,
       note: input.type === "INCIDENT" ? input.location.note : "",
     },
     reporter: currentUser,
     assignedTechnician: null,
-    slaHours: resolvedSlaHours,
-    dueAt: new Date(now.getTime() + resolvedSlaHours * 60 * 60 * 1000).toISOString(),
+    slaHours: 0,
+    dueAt: now.toISOString(),
     overdue: false,
     attachments,
     comments: [],
@@ -348,9 +356,9 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
     updatedAt: now.toISOString(),
   };
 
-  db.tickets = [newTicket, ...db.tickets];
+  db.tickets = [synchronizeTicketComputedFields(newTicket), ...db.tickets];
   writeMockDb(db);
-  return newTicket;
+  return db.tickets[0];
 }
 
 export async function updateTicket(ticketId: string, input: UpdateTicketInput) {
@@ -375,11 +383,47 @@ export async function updateTicket(ticketId: string, input: UpdateTicketInput) {
   }
 
   const previous = db.tickets[ticketIndex];
-  const updated = {
+  const nextPriority = input.priority ?? previous.priority;
+  const nextRequiresExtendedResolution =
+    input.requiresExtendedResolution ?? previous.requiresExtendedResolution;
+  const nextStatus = input.status ?? previous.status;
+
+  if (
+    input.status &&
+    input.status !== previous.status &&
+    !canTransitionTicket(
+      {
+        status: previous.status,
+        priority: nextPriority,
+        requiresExtendedResolution: nextRequiresExtendedResolution,
+      },
+      input.status
+    )
+  ) {
+    const allowedStatuses = getAllowedStatusOptions({
+      status: previous.status,
+      priority: nextPriority,
+      requiresExtendedResolution: nextRequiresExtendedResolution,
+    })
+      .map((status) => status.replace(/_/g, " "))
+      .join(", ");
+
+    throw new Error(
+      `This ticket cannot move from ${previous.status.replace(/_/g, " ")} to ${input.status.replace(
+        /_/g,
+        " "
+      )}. Allowed next stages: ${allowedStatuses}.`
+    );
+  }
+
+  const updated = synchronizeTicketComputedFields({
     ...previous,
     ...input,
+    priority: nextPriority,
+    status: nextStatus,
+    requiresExtendedResolution: Boolean(nextRequiresExtendedResolution),
     updatedAt: new Date().toISOString(),
-  } satisfies TicketRecord;
+  } satisfies TicketRecord);
 
   if (input.status === "RESOLVED" && previous.status !== "RESOLVED") {
     updated.resolvedAt = updated.updatedAt;
@@ -396,23 +440,69 @@ export async function updateTicket(ticketId: string, input: UpdateTicketInput) {
     }
   }
 
-  updated.overdue = isTicketOverdue(updated);
-  updated.activity = [
-    {
+  const nextActivity: TicketRecord["activity"] = [];
+
+  if (input.assignedTechnician && input.assignedTechnician.id !== previous.assignedTechnician?.id) {
+    nextActivity.push({
       id: uid("activity"),
-      action: input.status ? "STATUS_CHANGED" : "TICKET_UPDATED",
-      message: input.status
-        ? `Ticket moved to ${input.status.replace(/_/g, " ")}.`
-        : "Ticket updated.",
+      action: "TECHNICIAN_ASSIGNED",
+      message: `${input.assignedTechnician.fullName} was assigned to the ticket.`,
       createdAt: updated.updatedAt,
       actor: {
         id: currentUser.id,
         fullName: currentUser.fullName,
         role: currentUser.role,
       },
-    },
-    ...updated.activity,
-  ];
+    });
+  }
+
+  if (
+    input.requiresExtendedResolution !== undefined &&
+    Boolean(input.requiresExtendedResolution) !== Boolean(previous.requiresExtendedResolution)
+  ) {
+    nextActivity.push({
+      id: uid("activity"),
+      action: "SLA_UPDATED",
+      message: input.requiresExtendedResolution
+        ? "Extended resolution time enabled for a major or large repair."
+        : "Ticket moved back to the standard SLA window.",
+      createdAt: updated.updatedAt,
+      actor: {
+        id: currentUser.id,
+        fullName: currentUser.fullName,
+        role: currentUser.role,
+      },
+    });
+  }
+
+  if (input.status && input.status !== previous.status) {
+    nextActivity.push({
+      id: uid("activity"),
+      action: "STATUS_CHANGED",
+      message: `Ticket moved to ${input.status.replace(/_/g, " ")}.`,
+      createdAt: updated.updatedAt,
+      actor: {
+        id: currentUser.id,
+        fullName: currentUser.fullName,
+        role: currentUser.role,
+      },
+    });
+  } else if (input.priority || input.description || input.category || input.location) {
+    nextActivity.push({
+      id: uid("activity"),
+      action: "TICKET_UPDATED",
+      message: "Ticket updated.",
+      createdAt: updated.updatedAt,
+      actor: {
+        id: currentUser.id,
+        fullName: currentUser.fullName,
+        role: currentUser.role,
+      },
+    });
+  }
+
+  updated.overdue = isTicketOverdue(updated);
+  updated.activity = [...nextActivity, ...updated.activity];
 
   db.tickets[ticketIndex] = updated;
   writeMockDb(db);
@@ -567,6 +657,7 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
 
       return {
         cards: response.cards,
+        slaBuckets: [],
         charts: {
           statusBreakdown: response.charts.statusBreakdown.map((item) => ({
             label: item._id,
@@ -631,6 +722,27 @@ export async function deleteTicket(ticketId: string) {
   const db = readMockDb();
   db.tickets = db.tickets.filter((ticket) => ticket.id !== ticketId);
   writeMockDb(db);
+}
+
+export function subscribeToTicketDataChanges(listener: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  const handleCustomEvent = () => listener();
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY) {
+      listener();
+    }
+  };
+
+  window.addEventListener(TICKET_DATA_CHANGE_EVENT, handleCustomEvent);
+  window.addEventListener("storage", handleStorage);
+
+  return () => {
+    window.removeEventListener(TICKET_DATA_CHANGE_EVENT, handleCustomEvent);
+    window.removeEventListener("storage", handleStorage);
+  };
 }
 
 export function getCurrentUserRole() {

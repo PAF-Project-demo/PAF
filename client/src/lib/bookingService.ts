@@ -225,10 +225,8 @@ export const findNextAvailableSlot = (
 ): { availableStartTime: string; reason: string } | null => {
   const DAY_START = 8 * 60; // 08:00
   const DAY_END = 18 * 60; // 18:00
-  const MIN_SLOT_DURATION = 30; // 30 minutes minimum
 
   let currentStartMinutes = timeToMinutes(proposedStartTime);
-  const endMinutes = currentStartMinutes + slotDurationMinutes;
 
   // Check if proposed time is outside working hours
   if (currentStartMinutes < DAY_START) {
