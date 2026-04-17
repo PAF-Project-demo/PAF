@@ -106,8 +106,8 @@ export default function LinkedInCallback() {
   return (
     <>
       <PageMeta
-        title="LinkedIn Sign In | PAF"
-        description="Complete your LinkedIn sign-in to access the PAF dashboard."
+        title="EduNexus"
+        description="EduNexus - Student Management System"
       />
       <AuthLayout>
         <div className="flex min-h-full flex-1 items-center justify-center">

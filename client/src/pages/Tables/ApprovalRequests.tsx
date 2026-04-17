@@ -14,8 +14,8 @@ export default function ApprovalRequests() {
   return (
     <>
       <PageMeta
-        title="Approval Requests | PAF Auth Dashboard"
-        description="Review submitted role requests and approve or reject access changes."
+        title="EduNexus"
+        description="EduNexus - Student Management System"
       />
       <PageBreadcrumb pageTitle="Approval Requests" />
       <div className="space-y-6">
