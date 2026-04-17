@@ -6,7 +6,6 @@ import {
   ChevronDownIcon,
   GroupIcon,
   PieChartIcon,
-  TaskIcon,
   HorizontaLDots,
   TaskIcon,
   UserCircleIcon,
