@@ -3,7 +3,6 @@ import { User } from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { createHttpError } from "../utils/httpError.js";
 import { buildTicketId } from "../utils/generateTicketId.js";
-import { resolveSlaPlan } from "../utils/slaPolicy.js";
 
 const validPriorities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
@@ -189,13 +188,12 @@ export const createTicket = asyncHandler(async (req, res) => {
     throw createHttpError(400, "priority must be one of LOW, MEDIUM, HIGH, or CRITICAL.");
   }
 
-  const slaPlan = resolveSlaPlan({
-    priority,
-    title,
-    description,
-    category,
-    providedSlaHours: req.user.role === "USER" ? undefined : slaHours,
-  });
+  const finalSlaHours =
+    req.user.role === "USER"
+      ? { LOW: 72, MEDIUM: 24, HIGH: 8, CRITICAL: 4 }[priority]
+      : Number.isFinite(Number(slaHours)) && Number(slaHours) > 0
+        ? Number(slaHours)
+        : { LOW: 72, MEDIUM: 24, HIGH: 8, CRITICAL: 4 }[priority];
   const ticket = await Ticket.create({
     ticketId: await nextTicketId(),
     title: title.trim(),
@@ -213,8 +211,8 @@ export const createTicket = asyncHandler(async (req, res) => {
       note: type === "INCIDENT" ? location.note?.trim() || "" : "",
     },
     reporter: reporterFromUser(req.user),
-    slaHours: slaPlan.targetHours,
-    dueAt: new Date(Date.now() + slaPlan.targetHours * 60 * 60 * 1000),
+    slaHours: finalSlaHours,
+    dueAt: new Date(Date.now() + finalSlaHours * 60 * 60 * 1000),
     activity: [
       {
         action: "TICKET_CREATED",
@@ -224,8 +222,6 @@ export const createTicket = asyncHandler(async (req, res) => {
           priority,
           category,
           type,
-          requiresExtendedResolution: slaPlan.requiresExtendedResolution,
-          slaHours: slaPlan.targetHours,
         },
       },
     ],
@@ -278,20 +274,14 @@ export const updateTicket = asyncHandler(async (req, res) => {
 
   if (
     "priority" in req.body ||
-    "slaHours" in req.body ||
-    "title" in req.body ||
-    "description" in req.body ||
-    "category" in req.body
+    "slaHours" in req.body
   ) {
-    const slaPlan = resolveSlaPlan({
-      priority: ticket.priority,
-      title: ticket.title,
-      description: ticket.description,
-      category: ticket.category,
-      providedSlaHours: "slaHours" in req.body ? req.body.slaHours : undefined,
-    });
-    ticket.slaHours = slaPlan.targetHours;
-    ticket.dueAt = new Date(ticket.createdAt.getTime() + slaPlan.targetHours * 60 * 60 * 1000);
+    const finalSlaHours =
+      Number.isFinite(Number(ticket.slaHours)) && Number(ticket.slaHours) > 0
+        ? Number(ticket.slaHours)
+        : { LOW: 72, MEDIUM: 24, HIGH: 8, CRITICAL: 4 }[ticket.priority];
+    ticket.slaHours = finalSlaHours;
+    ticket.dueAt = new Date(ticket.createdAt.getTime() + finalSlaHours * 60 * 60 * 1000);
   }
 
   appendActivity(

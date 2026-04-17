@@ -15,7 +15,6 @@ import {
   formatTicketLocation,
   getTicketDueLabel,
 } from "../../lib/ticketing/helpers";
-import { getSlaPlanForTicket, getSlaSummaryText, getWorkflowGuidance } from "../../lib/ticketing/sla";
 import {
   addTicketComment,
   assignTechnician,
@@ -82,10 +81,6 @@ export default function TicketDetailsPage() {
       </div>
     );
   }
-
-  const slaPlan = getSlaPlanForTicket(ticket);
-  const workflowGuidance = getWorkflowGuidance(ticket);
-  const slaSummary = getSlaSummaryText(ticket);
 
   const handleUpdate = async () => {
     if (!canManage) {
@@ -196,28 +191,6 @@ export default function TicketDetailsPage() {
                   {formatDateTime(ticket.createdAt)}
                 </p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Resolution target
-                </p>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{slaSummary}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Current SLA window: {ticket.slaHours} hours
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Recommended workflow
-                </p>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  {workflowGuidance}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {slaPlan.requiresExtendedResolution
-                    ? "Marked for extended resolution time because this looks like a larger repair."
-                    : "Standard workflow target for this priority level."}
-                </p>
-              </div>
             </div>
           </ComponentCard>
 
@@ -280,41 +253,21 @@ export default function TicketDetailsPage() {
                     </p>
                   </div>
 
-                <div className="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                    Last updated
-                  </p>
-                  <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">
-                    {formatDateTime(ticket.updatedAt)}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                    SLA expectation
-                  </p>
-                  <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">
-                    {slaSummary}
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                    {workflowGuidance}
-                  </p>
+                  <div className="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Last updated
+                    </p>
+                    <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">
+                      {formatDateTime(ticket.updatedAt)}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
+            ) : (
               <div className="space-y-4">
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
                   Staff workflow mode is active. Status and workflow changes made here
                   will be visible to the student as tracking updates.
-                </div>
-
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-200">
-                  <p className="font-semibold text-gray-900 dark:text-white">SLA guidance</p>
-                  <p className="mt-2">{slaSummary}</p>
-                  <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                    {workflowGuidance}
-                  </p>
                 </div>
 
                 <div>

@@ -1,11 +1,9 @@
 import { Ticket } from "../models/Ticket.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { getSlaBucket } from "../utils/slaPolicy.js";
 
 const statusOrder = ["OPEN", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "CLOSED", "CANCELLED"];
 const priorityOrder = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 const typeOrder = ["MAINTENANCE", "INCIDENT"];
-const slaOrder = ["SAME_DAY", "TWO_DAY", "EXTENDED"];
 
 function getAccessMatch(user) {
   if (user.role === "USER") {
@@ -33,15 +31,7 @@ function getLastSixMonthKeys() {
 export const getDashboardSummary = asyncHandler(async (req, res) => {
   const accessMatch = getAccessMatch(req.user);
 
-  const [
-    statusBreakdown,
-    priorityBreakdown,
-    typeBreakdown,
-    overdueCount,
-    totalTickets,
-    recentTickets,
-    slaTickets,
-  ] =
+  const [statusBreakdown, priorityBreakdown, typeBreakdown, overdueCount, totalTickets, recentTickets] =
     await Promise.all([
       Ticket.aggregate([
         { $match: accessMatch },
@@ -60,7 +50,6 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
       Ticket.countDocuments({ ...accessMatch, overdue: true }),
       Ticket.countDocuments(accessMatch),
       Ticket.find(accessMatch).sort({ createdAt: -1 }).limit(5).lean(),
-      Ticket.find(accessMatch).select("priority slaHours").lean(),
     ]);
 
   const monthlyTrend = await Ticket.aggregate([
@@ -80,13 +69,6 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
   const openCount = statusBreakdown
     .filter((item) => ["OPEN", "IN_PROGRESS", "ON_HOLD"].includes(item._id))
     .reduce((sum, item) => sum + item.count, 0);
-  const slaBreakdownMap = new Map(slaOrder.map((label) => [label, 0]));
-
-  slaTickets.forEach((ticket) => {
-    const bucket = getSlaBucket(ticket);
-    slaBreakdownMap.set(bucket, (slaBreakdownMap.get(bucket) ?? 0) + 1);
-  });
-
   const monthlyLookup = new Map(
     monthlyTrend.map((item) => [
       `${item._id.year}-${String(item._id.month).padStart(2, "0")}`,
@@ -121,10 +103,6 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
       typeBreakdown: typeOrder.map((label) => ({
         _id: label,
         count: typeBreakdown.find((item) => item._id === label)?.count ?? 0,
-      })),
-      slaBreakdown: slaOrder.map((label) => ({
-        _id: label,
-        count: slaBreakdownMap.get(label) ?? 0,
       })),
       monthlyTrend: getLastSixMonthKeys().map((item) => ({
         label: item.label,

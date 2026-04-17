@@ -41,7 +41,7 @@ export const seedTicketBlueprints = [
       campus: "Main Campus",
       note: "Near the east window bank.",
     },
-    slaHours: 48,
+    slaHours: 8,
     comments: [
       {
         message: "Students have been redirected to adjacent desks for now.",
@@ -63,7 +63,7 @@ export const seedTicketBlueprints = [
       campus: "Main Campus",
       note: "Ceiling panel above reagent storage.",
     },
-    slaHours: 48,
+    slaHours: 4,
     comments: [],
   },
   {
