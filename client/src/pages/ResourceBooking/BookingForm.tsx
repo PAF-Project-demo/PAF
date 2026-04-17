@@ -1,8 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNotification } from "../../components/common/NotificationProvider";
 import Button from "../../components/ui/button/Button";
 import { Resource } from "../../lib/resourceService";
-import { createBooking, CreateBookingRequest } from "../../lib/bookingService";
+import { 
+  createBooking, 
+  CreateBookingRequest,
+  getResourceBookingsForDate,
+  hasTimeConflict,
+  findNextAvailableSlot,
+  timeToMinutes
+} from "../../lib/bookingService";
 import { BoxCubeIcon, GridIcon, TableIcon, BoxIconLine, CalenderIcon, TimeIcon, UserIcon, InfoIcon, CheckCircleIcon, AlertIcon } from "../../icons";
 
 interface BookingFormProps {
@@ -55,6 +62,12 @@ export default function BookingForm({ resources }: BookingFormProps) {
     attendees: 1,
   });
 
+  // State for conflict detection and availability
+  const [bookedSlots, setBookedSlots] = useState<Array<{ start: string; end: string; status: string }>>([]);
+  const [hasConflict, setHasConflict] = useState(false);
+  const [nextAvailableSlot, setNextAvailableSlot] = useState<{ availableStartTime: string; reason: string } | null>(null);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+
   // Filter resources based on selected asset type
   const filteredResources = selectedAssetType
     ? resources.filter((r) => r.type === selectedAssetType)
@@ -71,6 +84,33 @@ export default function BookingForm({ resources }: BookingFormProps) {
 
   // Get selected resource
   const selectedResource = formData.resourceId ? resources.find((r) => r.id === formData.resourceId) : null;
+
+  // Fetch booked slots when resource and date change
+  useEffect(() => {
+    const loadBookedSlots = async () => {
+      if (formData.resourceId && formData.date) {
+        try {
+          setIsLoadingBookings(true);
+          const bookings = await getResourceBookingsForDate(formData.resourceId, formData.date);
+          const slots = bookings.map((b) => ({
+            start: b.startTime,
+            end: b.endTime,
+            status: b.status,
+          }));
+          setBookedSlots(slots);
+        } catch (err) {
+          console.error("Failed to load booked slots:", err);
+          setBookedSlots([]);
+        } finally {
+          setIsLoadingBookings(false);
+        }
+      } else {
+        setBookedSlots([]);
+      }
+    };
+
+    loadBookedSlots();
+  }, [formData.resourceId, formData.date]);
 
   // Calculate duration in minutes
   const calculateDuration = () => {
@@ -138,6 +178,46 @@ export default function BookingForm({ resources }: BookingFormProps) {
       }
     }
 
+    // Check for time conflicts when start or end time changes
+    if ((name === "startTime" || name === "endTime") && formData.date && formData.resourceId) {
+      const newStartTime = name === "startTime" ? (value as string) : formData.startTime;
+      const newEndTime = name === "endTime" ? (value as string) : formData.endTime;
+
+      if (newStartTime && newEndTime && newStartTime < newEndTime) {
+        // Check for conflicts with booked slots
+        const conflict = bookedSlots.some((slot) =>
+          hasTimeConflict(newStartTime, newEndTime, slot.start, slot.end)
+        );
+        setHasConflict(conflict);
+
+        // If there's a conflict, find next available slot
+        if (conflict) {
+          const nextSlot = findNextAvailableSlot(
+            bookedSlots.map((slot) => ({
+              resourceId: formData.resourceId,
+              userId: "",
+              id: "",
+              date: formData.date,
+              startTime: slot.start,
+              endTime: slot.end,
+              purpose: "",
+              attendees: 0,
+              status: slot.status as "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED",
+              createdAt: "",
+            })),
+            newStartTime,
+            timeToMinutes(newEndTime) - timeToMinutes(newStartTime)
+          );
+          setNextAvailableSlot(nextSlot);
+        } else {
+          setNextAvailableSlot(null);
+        }
+      } else {
+        setHasConflict(false);
+        setNextAvailableSlot(null);
+      }
+    }
+
     // Real-time validation
     const error = validateField(name, numValue);
     setFormErrors((prev) => ({
@@ -176,16 +256,32 @@ export default function BookingForm({ resources }: BookingFormProps) {
         variant: "success",
       });
 
-      // Reset form
-      setSelectedAssetType("");
+      // Store the resource and date before resetting
+      const currentResourceId = formData.resourceId;
+      const currentDate = formData.date;
+
+      // Immediately add the newly created booking to the booked slots list
+      // This ensures the user sees their booking right away without waiting for backend
+      setBookedSlots((prev) => [
+        ...prev,
+        {
+          start: formData.startTime,
+          end: formData.endTime,
+          status: "PENDING",
+        },
+      ]);
+
+      // Reset only the time and purpose fields, keep resource and date
+      // This allows users to immediately see their new booking in the list
       setFormData({
-        resourceId: "",
-        date: "",
+        resourceId: currentResourceId,
+        date: currentDate,
         startTime: "",
         endTime: "",
         purpose: "",
         attendees: 1,
       });
+
       setFormErrors({});
     } catch (err: any) {
       showNotification({
@@ -517,8 +613,96 @@ export default function BookingForm({ resources }: BookingFormProps) {
                   </p>
                 </div>
               )}
+
+              {/* Conflict Warning */}
+              {hasConflict && (
+                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-900/20">
+                  <p className="text-xs font-bold text-red-700 dark:text-red-400 flex items-center gap-2">
+                    <span className="text-lg">⚠️</span>
+                    Time slot conflicts with an existing booking
+                  </p>
+                  {nextAvailableSlot && (
+                    <div className="mt-2">
+                      <p className="text-xs text-red-600 dark:text-red-300">
+                        💡 {nextAvailableSlot.reason}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            startTime: nextAvailableSlot.availableStartTime,
+                            endTime: "",
+                          }));
+                          setHasConflict(false);
+                          setNextAvailableSlot(null);
+                        }}
+                        className="mt-2 inline-block rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+                      >
+                        Apply Suggested Time
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Booked Time Slots Display */}
+          {formData.resourceId && formData.date && (
+            <div className="mt-6 border-t border-gray-200 pt-6 dark:border-gray-700">
+              <div className="mb-4 flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-orange-400"></div>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                  Booked Time Slots for {new Date(formData.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </p>
+                {isLoadingBookings && <span className="text-xs text-gray-500 dark:text-gray-400">(Loading...)</span>}
+              </div>
+
+              {bookedSlots.length > 0 ? (
+                <div className="space-y-2">
+                  {bookedSlots.map((slot, idx) => {
+                    const isConflicting = formData.startTime && formData.endTime && hasTimeConflict(formData.startTime, formData.endTime, slot.start, slot.end);
+                    return (
+                      <div
+                        key={idx}
+                        className={`rounded-lg p-3 text-sm flex items-center justify-between ${
+                          isConflicting
+                            ? "border-2 border-red-400 bg-red-50 dark:border-red-700 dark:bg-red-900/20"
+                            : "border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/30"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`text-lg ${isConflicting ? "text-red-600 dark:text-red-400" : "text-orange-500 dark:text-orange-400"}`}>
+                            {isConflicting ? "🚫" : "📌"}
+                          </span>
+                          <div>
+                            <p className={`font-medium ${isConflicting ? "text-red-700 dark:text-red-300" : "text-gray-900 dark:text-white"}`}>
+                              {slot.start} - {slot.end}
+                            </p>
+                            <p className={`text-xs ${isConflicting ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-400"}`}>
+                              Status: {slot.status}
+                            </p>
+                          </div>
+                        </div>
+                        {isConflicting && (
+                          <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-bold text-red-700 dark:bg-red-900 dark:text-red-300">
+                            CONFLICT
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-green-300 bg-green-50 p-4 text-center dark:border-green-800 dark:bg-green-900/20">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                    ✅ No bookings for this date - All time slots are available!
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Section 3: EVENT DETAILS */}
