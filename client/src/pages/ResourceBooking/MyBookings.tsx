@@ -96,12 +96,6 @@ export default function MyBookings() {
             {error}
           </div>
         </ComponentCard>
-      ) : bookings.length === 0 ? (
-        <ComponentCard title="My Bookings">
-          <div className="rounded-lg bg-blue-50 p-6 text-center dark:bg-blue-950">
-            <p className="text-gray-600 dark:text-gray-400">No bookings yet. Create one to get started!</p>
-          </div>
-        </ComponentCard>
       ) : (
         <ComponentCard title="My Bookings" desc={`You have ${bookings.length} booking${bookings.length !== 1 ? "s" : ""}`}>
           <div className="overflow-x-auto">
