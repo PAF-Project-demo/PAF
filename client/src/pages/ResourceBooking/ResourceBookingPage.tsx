@@ -80,7 +80,7 @@ export default function ResourceBookingPage() {
 
   return (
     <>
-      <PageMeta title="Resource Booking | Campus Hub" description="Book campus resources" />
+      <PageMeta title="EduNexus" description="EduNexus - Student Management System" />
       <PageBreadcrumb pageTitle="Resource Booking" />
 
       <div className="space-y-6">

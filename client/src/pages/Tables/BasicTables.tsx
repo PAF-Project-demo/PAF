@@ -32,8 +32,8 @@ export default function BasicTables() {
   return (
     <>
       <PageMeta
-        title="Role Requests | PAF Auth Dashboard"
-        description="Submit role requests and track your approval status."
+        title="EduNexus"
+        description="EduNexus - Student Management System"
       />
       <PageBreadcrumb pageTitle="Role Requests" />
       <div className="space-y-6">
