@@ -60,7 +60,7 @@ export default function ResourceListPage() {
 
   return (
     <>
-      <PageMeta title="Facilities & Assets | Campus Hub" description="Manage campus resources" />
+      <PageMeta title="EduNexus" description="EduNexus - Student Management System" />
       <PageBreadcrumb pageTitle="Facilities & Assets" />
       
       <div className="space-y-6">

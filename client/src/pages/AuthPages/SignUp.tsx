@@ -6,8 +6,8 @@ export default function SignUp() {
   return (
     <>
       <PageMeta
-        title="Sign Up | PAF"
-        description="Continue with LinkedIn, GitHub, Google, or create a new account with your email and password."
+        title="EduNexus"
+        description="EduNexus - Student Management System"
       />
       <AuthLayout>
         <SignUpForm />
