@@ -7,8 +7,8 @@ export default function AuditLog() {
   return (
     <>
       <PageMeta
-        title="Audit Log | PAF Auth Dashboard"
-        description="Review the stored history of role requests, approvals, rejections, and direct role changes."
+        title="EduNexus"
+        description="EduNexus - Student Management System"
       />
       <PageBreadcrumb pageTitle="Audit Log" />
       <div className="space-y-6">

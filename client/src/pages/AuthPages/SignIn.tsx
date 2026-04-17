@@ -6,8 +6,8 @@ export default function SignIn() {
   return (
     <>
       <PageMeta
-        title="Sign In | PAF"
-        description="Sign in with LinkedIn, Google, or your email and password to access the PAF dashboard."
+        title="EduNexus"
+        description="EduNexus - Student Management System"
       />
       <AuthLayout>
         <SignInForm />

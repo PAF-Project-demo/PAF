@@ -149,8 +149,8 @@ export default function UserProfiles() {
   return (
     <>
       <PageMeta
-        title="Profile | Campus Hub"
-        description="View your account details and sign-in information."
+        title="EduNexus"
+        description="EduNexus - Student Management System"
       />
       <PageBreadcrumb pageTitle="Profile" />
 
