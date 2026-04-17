@@ -6,6 +6,10 @@ import {
   ChevronDownIcon,
   GroupIcon,
   HorizontaLDots,
+  ListIcon,
+  PieChartIcon,
+  PlugInIcon,
+  TaskIcon,
   UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
@@ -39,6 +43,21 @@ const navItems: NavItem[] = [
     icon: <UserCircleIcon />,
     name: "User Profile",
     path: "/profile",
+  },
+  {
+    name: "Forms",
+    icon: <ListIcon />,
+    subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
+  },
+
+  {
+    name: "Resource Booking",
+    icon: <TaskIcon />,
+    subItems: [
+      { name: "Book Resource", path: "/bookings", pro: false },
+      { name: "My Bookings", path: "/bookings", pro: false },
+      { name: "Calendar", path: "/bookings", pro: false },
+    ],
   },
 ];
 
