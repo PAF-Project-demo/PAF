@@ -127,6 +127,33 @@ export const cancelBooking = async (id: string): Promise<void> => {
 };
 
 /**
+ * Update booking details (user can update own PENDING/APPROVED bookings)
+ */
+export const updateBooking = async (
+  id: string,
+  resourceId: string,
+  date: string,
+  startTime: string,
+  endTime: string,
+  purpose: string,
+  attendees: number
+): Promise<Booking> => {
+  const response = await fetch(`${API_BASE_URL}/${id}`, {
+    method: "PUT",
+    headers: getHeaders(),
+    credentials: "include",
+    body: JSON.stringify({ resourceId, date, startTime, endTime, purpose, attendees }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to update booking");
+  }
+
+  return await response.json();
+};
+
+/**
  * Update booking status (admin only)
  */
 export const updateBookingStatus = async (

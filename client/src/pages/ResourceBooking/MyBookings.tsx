@@ -3,8 +3,9 @@ import ComponentCard from "../../components/common/ComponentCard";
 import LoadingIndicator from "../../components/common/LoadingIndicator";
 import Badge from "../../components/ui/badge/Badge";
 import { useNotification } from "../../components/common/NotificationProvider";
-import { Booking, getUserBookings, cancelBooking } from "../../lib/bookingService";
-import { TrashBinIcon } from "../../icons";
+import { Booking, getUserBookings, cancelBooking, updateBooking } from "../../lib/bookingService";
+import { Resource, fetchResources } from "../../lib/resourceService";
+import { TrashBinIcon, PencilIcon } from "../../icons";
 
 interface RecurringGroup {
   groupId: string;
@@ -15,13 +16,42 @@ interface RecurringGroup {
 export default function MyBookings() {
   const { showNotification } = useNotification();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  
+  // Edit modal state
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    resourceId: "",
+    date: "",
+    startTime: "",
+    endTime: "",
+    purpose: "",
+    attendees: 1,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    loadBookings();
+    loadBookingsAndResources();
   }, []);
+
+  const loadBookingsAndResources = async () => {
+    try {
+      setIsLoading(true);
+      const [bookingsData, resourcesData] = await Promise.all([
+        getUserBookings(),
+        fetchResources(),
+      ]);
+      setBookings(bookingsData);
+      setResources(resourcesData);
+    } catch (err) {
+      setError("Failed to load your bookings");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadBookings = async () => {
     try {
@@ -105,6 +135,96 @@ export default function MyBookings() {
     }
   };
 
+  const handleEditClick = (booking: Booking) => {
+    setEditingBooking(booking);
+    setEditFormData({
+      resourceId: booking.resourceId,
+      date: booking.date,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      purpose: booking.purpose,
+      attendees: booking.attendees,
+    });
+  };
+
+  const handleCloseEditModal = () => {
+    setEditingBooking(null);
+    setEditFormData({
+      resourceId: "",
+      date: "",
+      startTime: "",
+      endTime: "",
+      purpose: "",
+      attendees: 1,
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingBooking) return;
+
+    // Validation
+    if (!editFormData.resourceId || !editFormData.date || !editFormData.startTime || !editFormData.endTime || !editFormData.purpose) {
+      showNotification({
+        title: "Error",
+        message: "All fields are required",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (editFormData.attendees < 1) {
+      showNotification({
+        title: "Error",
+        message: "Attendees must be at least 1",
+        variant: "error",
+      });
+      return;
+    }
+
+    // Time validation
+    if (editFormData.endTime <= editFormData.startTime) {
+      showNotification({
+        title: "Error",
+        message: "End time must be after start time",
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const updatedBooking = await updateBooking(
+        editingBooking.id,
+        editFormData.resourceId,
+        editFormData.date,
+        editFormData.startTime,
+        editFormData.endTime,
+        editFormData.purpose,
+        editFormData.attendees
+      );
+
+      setBookings((prev) =>
+        prev.map((b) => (b.id === updatedBooking.id ? updatedBooking : b))
+      );
+
+      showNotification({
+        title: "Success",
+        message: "Booking updated successfully",
+        variant: "success",
+      });
+
+      handleCloseEditModal();
+    } catch (err: any) {
+      showNotification({
+        title: "Error",
+        message: err.message || "Failed to update booking",
+        variant: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const getStatusBadgeColor = (status: Booking["status"]) => {
     switch (status) {
       case "PENDING":
@@ -121,6 +241,10 @@ export default function MyBookings() {
   };
 
   const canCancel = (booking: Booking) => {
+    return booking.status === "PENDING" || booking.status === "APPROVED";
+  };
+
+  const canEdit = (booking: Booking) => {
     return booking.status === "PENDING" || booking.status === "APPROVED";
   };
 
@@ -243,17 +367,28 @@ export default function MyBookings() {
                             )}
                           </td>
                           <td style={{ width: '70px', padding: '12px', textAlign: 'center' }}>
-                            {canCancel(booking) ? (
-                              <button
-                                onClick={() => handleCancel(booking.id)}
-                                className="inline-flex items-center justify-center rounded p-2 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
-                                title="Cancel booking"
-                              >
-                                <TrashBinIcon className="h-4 w-4 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" />
-                              </button>
-                            ) : (
-                              <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
-                            )}
+                            <div className="flex items-center justify-center gap-1">
+                              {canEdit(booking) && (
+                                <button
+                                  onClick={() => handleEditClick(booking)}
+                                  className="inline-flex items-center justify-center rounded p-2 hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors"
+                                  title="Edit booking"
+                                >
+                                  <PencilIcon className="h-4 w-4 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300" />
+                                </button>
+                              )}
+                              {canCancel(booking) ? (
+                                <button
+                                  onClick={() => handleCancel(booking.id)}
+                                  className="inline-flex items-center justify-center rounded p-2 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+                                  title="Cancel booking"
+                                >
+                                  <TrashBinIcon className="h-4 w-4 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" />
+                                </button>
+                              ) : (
+                                <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -263,6 +398,133 @@ export default function MyBookings() {
             </table>
           </div>
         </ComponentCard>
+      )}
+
+      {/* Edit Modal */}
+      {editingBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+            <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-white">Edit Booking</h2>
+
+            <div className="space-y-4">
+              {/* Resource Dropdown */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Resource
+                </label>
+                <select
+                  value={editFormData.resourceId}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, resourceId: e.target.value })
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">Select a resource</option>
+                  {resources.map((res) => (
+                    <option key={res.id} value={res.id}>
+                      {res.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={editFormData.date}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, date: e.target.value })
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              {/* Start Time */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Start Time
+                </label>
+                <input
+                  type="time"
+                  value={editFormData.startTime}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, startTime: e.target.value })
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              {/* End Time */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  End Time
+                </label>
+                <input
+                  type="time"
+                  value={editFormData.endTime}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, endTime: e.target.value })
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              {/* Purpose */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Purpose
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.purpose}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, purpose: e.target.value })
+                  }
+                  placeholder="Booking purpose"
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              {/* Attendees */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Attendees
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={editFormData.attendees}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, attendees: parseInt(e.target.value) || 1 })
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={handleCloseEditModal}
+                disabled={isSubmitting}
+                className="flex-1 rounded bg-gray-200 px-4 py-2 font-medium text-gray-800 hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={isSubmitting}
+                className="flex-1 rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSubmitting ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

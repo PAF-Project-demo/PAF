@@ -2,6 +2,7 @@ package com.server.server.booking.controller;
 
 import com.server.server.booking.dto.BookingDTO;
 import com.server.server.booking.dto.CreateBookingRequest;
+import com.server.server.booking.dto.UpdateBookingRequest;
 import com.server.server.booking.dto.UpdateBookingStatusRequest;
 import com.server.server.booking.service.BookingService;
 import jakarta.validation.Valid;
@@ -91,6 +92,22 @@ public class BookingController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         
+        return ResponseEntity.ok(booking);
+    }
+
+    /**
+     * Update a booking - user can only update their own PENDING or APPROVED bookings.
+     *
+     * @param id the booking ID
+     * @param updateRequest the update request with new booking details
+     * @return the updated booking DTO
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<BookingDTO> updateBooking(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateBookingRequest updateRequest) {
+        BookingDTO booking = bookingService.updateBooking(id, updateRequest);
         return ResponseEntity.ok(booking);
     }
 
