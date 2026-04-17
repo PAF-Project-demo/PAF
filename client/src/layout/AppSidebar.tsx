@@ -6,9 +6,6 @@ import {
   ChevronDownIcon,
   GroupIcon,
   HorizontaLDots,
-  ListIcon,
-  PieChartIcon,
-  PlugInIcon,
   TaskIcon,
   UserCircleIcon,
 } from "../icons";
@@ -40,17 +37,6 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    icon: <UserCircleIcon />,
-    name: "User Profile",
-    path: "/profile",
-  },
-  {
-    name: "Forms",
-    icon: <ListIcon />,
-    subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
-  },
-
-  {
     name: "Resource Booking",
     icon: <TaskIcon />,
     subItems: [
@@ -58,6 +44,11 @@ const navItems: NavItem[] = [
       { name: "My Bookings", path: "/bookings", pro: false },
       { name: "Calendar", path: "/bookings", pro: false },
     ],
+  },
+    {
+    icon: <UserCircleIcon />,
+    name: "User Profile",
+    path: "/profile",
   },
 ];
 
