@@ -7,6 +7,7 @@ import type {
   TicketRole,
   TicketStatus,
 } from "./types";
+import { getSlaBucketForTicket } from "./sla";
 
 const dashboardStatusOrder: TicketStatus[] = [
   "OPEN",
@@ -165,11 +166,18 @@ export function buildDashboardSummary(tickets: TicketRecord[]): DashboardSummary
   const priorityMap = new Map<string, number>();
   const monthlyMap = new Map<string, number>();
   const typeMap = new Map<string, number>();
+  const slaMap = new Map<string, number>([
+    ["SAME_DAY", 0],
+    ["TWO_DAY", 0],
+    ["EXTENDED", 0],
+  ]);
 
   tickets.forEach((ticket) => {
     statusMap.set(ticket.status, (statusMap.get(ticket.status) ?? 0) + 1);
     priorityMap.set(ticket.priority, (priorityMap.get(ticket.priority) ?? 0) + 1);
     typeMap.set(ticket.type, (typeMap.get(ticket.type) ?? 0) + 1);
+    const slaBucket = getSlaBucketForTicket(ticket);
+    slaMap.set(slaBucket, (slaMap.get(slaBucket) ?? 0) + 1);
 
     const monthKey = new Date(ticket.createdAt).toLocaleString(undefined, {
       month: "short",
@@ -207,6 +215,10 @@ export function buildDashboardSummary(tickets: TicketRecord[]): DashboardSummary
       typeBreakdown: ["MAINTENANCE", "INCIDENT"].map((label) => ({
         label,
         value: typeMap.get(label) ?? 0,
+      })),
+      slaBreakdown: ["SAME_DAY", "TWO_DAY", "EXTENDED"].map((label) => ({
+        label,
+        value: slaMap.get(label) ?? 0,
       })),
     },
     recentTickets: [...tickets]

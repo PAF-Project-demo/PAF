@@ -11,6 +11,7 @@ import {
   STUDENT_TICKET_CATEGORIES,
 } from "./catalog";
 import { initialMockTicketingData, type TicketingMockDatabase } from "./mockData";
+import { resolveSlaPlan } from "./sla";
 import type {
   CreateTicketInput,
   DashboardSummary,
@@ -290,10 +291,13 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
   const db = readMockDb();
   const currentUser = getCurrentTicketUser(db);
   const now = new Date();
-  const resolvedSlaHours =
-    input.slaHours && input.slaHours > 0
-      ? input.slaHours
-      : { LOW: 72, MEDIUM: 24, HIGH: 8, CRITICAL: 4 }[input.priority];
+  const slaPlan = resolveSlaPlan({
+    priority: input.priority,
+    title: input.title,
+    description: input.description,
+    category: input.category,
+    providedSlaHours: input.slaHours,
+  });
 
   const attachments =
     input.attachments?.map((file) => ({
@@ -326,8 +330,8 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
     },
     reporter: currentUser,
     assignedTechnician: null,
-    slaHours: resolvedSlaHours,
-    dueAt: new Date(now.getTime() + resolvedSlaHours * 60 * 60 * 1000).toISOString(),
+    slaHours: slaPlan.targetHours,
+    dueAt: new Date(now.getTime() + slaPlan.targetHours * 60 * 60 * 1000).toISOString(),
     overdue: false,
     attachments,
     comments: [],
@@ -380,6 +384,25 @@ export async function updateTicket(ticketId: string, input: UpdateTicketInput) {
     ...input,
     updatedAt: new Date().toISOString(),
   } satisfies TicketRecord;
+
+  if (
+    input.priority ||
+    input.slaHours ||
+    input.description ||
+    input.category
+  ) {
+    const slaPlan = resolveSlaPlan({
+      priority: updated.priority,
+      title: updated.title,
+      description: updated.description,
+      category: updated.category,
+      providedSlaHours: input.slaHours,
+    });
+    updated.slaHours = slaPlan.targetHours;
+    updated.dueAt = new Date(
+      Date.parse(updated.createdAt) + slaPlan.targetHours * 60 * 60 * 1000
+    ).toISOString();
+  }
 
   if (input.status === "RESOLVED" && previous.status !== "RESOLVED") {
     updated.resolvedAt = updated.updatedAt;
@@ -560,6 +583,7 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
           statusBreakdown: Array<{ _id: string; count: number }>;
           priorityBreakdown: Array<{ _id: string; count: number }>;
           typeBreakdown: Array<{ _id: string; count: number }>;
+          slaBreakdown: Array<{ _id: string; count: number }>;
           monthlyTrend: Array<{ label: string; created: number }>;
         };
         recentTickets: TicketRecord[];
@@ -577,6 +601,10 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
             value: item.count,
           })),
           typeBreakdown: response.charts.typeBreakdown.map((item) => ({
+            label: item._id,
+            value: item.count,
+          })),
+          slaBreakdown: response.charts.slaBreakdown.map((item) => ({
             label: item._id,
             value: item.count,
           })),
