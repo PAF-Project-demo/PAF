@@ -51,7 +51,7 @@ public class BookingController {
      * @return list of current user's bookings
      */
     @GetMapping("/my")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<List<BookingDTO>> getCurrentUserBookings() {
         List<BookingDTO> bookings = bookingService.getCurrentUserBookings();
         return ResponseEntity.ok(bookings);
@@ -77,7 +77,7 @@ public class BookingController {
      * @return the booking DTO
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<BookingDTO> getBookingById(@PathVariable String id) {
         BookingDTO booking = bookingService.getBookingById(id);
         
@@ -118,9 +118,23 @@ public class BookingController {
      * @return HTTP 204 No Content on success
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<Void> cancelBooking(@PathVariable String id) {
         bookingService.cancelBooking(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Debug endpoint to check current user identity and role.
+     * Helps diagnose authentication/authorization issues.
+     */
+    @GetMapping("/debug/current-user")
+    public ResponseEntity<Object> getCurrentUserDebug() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return ResponseEntity.ok(java.util.Map.of(
+            "principal", auth != null ? auth.getPrincipal() : "null",
+            "authorities", auth != null ? auth.getAuthorities() : "null",
+            "isAuthenticated", auth != null ? auth.isAuthenticated() : false
+        ));
     }
 }

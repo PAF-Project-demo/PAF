@@ -235,15 +235,32 @@ public class BookingService {
 
     /**
      * Get all bookings for the current user.
+     * If the user is an ADMIN, returns all bookings in the system.
+     * Otherwise, returns only the current user's bookings.
      *
-     * @return list of booking DTOs for the current user
+     * @return list of booking DTOs (all for admin, current user's for regular users)
      */
     public List<BookingDTO> getCurrentUserBookings() {
-        String userId = getCurrentUserId();
-        return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        // Check if the current user is an admin
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        
+        if (isAdmin) {
+            // Admin sees all bookings
+            return bookingRepository.findAll()
+                    .stream()
+                    .map(this::mapToDTO)
+                    .collect(Collectors.toList());
+        } else {
+            // Regular users see only their own bookings
+            String userId = getCurrentUserId();
+            return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                    .stream()
+                    .map(this::mapToDTO)
+                    .collect(Collectors.toList());
+        }
     }
 
     /**
