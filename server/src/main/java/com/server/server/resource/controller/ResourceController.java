@@ -144,6 +144,8 @@ public class ResourceController {
         dto.setCreatedAt(LocalDateTime.now());
         dto.setUpdatedAt(LocalDateTime.now());
         return dto;
+    }
+
     @PostMapping("/{id}/reviews")
     public ResponseEntity<ResourceDTO> addReviewToResource(
             @RequestHeader(value = "X-Auth-User-Id", required = true) String userId,
