@@ -24,6 +24,7 @@ public class ResourceDTO {
 
     private String availabilityWindows;
     private ResourceStatus status;
+    private String description;
     private String imageUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -84,6 +85,14 @@ public class ResourceDTO {
 
     public void setStatus(ResourceStatus status) {
         this.status = status;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getImageUrl() {

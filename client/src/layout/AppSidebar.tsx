@@ -6,6 +6,7 @@ import {
   ChevronDownIcon,
   GroupIcon,
   HorizontaLDots,
+  TaskIcon,
   UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
@@ -36,6 +37,15 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    name: "Resource Booking",
+    icon: <TaskIcon />,
+    subItems: [
+      { name: "Book Resource", path: "/bookings", pro: false },
+      { name: "My Bookings", path: "/bookings", pro: false },
+      { name: "Calendar", path: "/bookings", pro: false },
+    ],
+  },
+    {
     icon: <UserCircleIcon />,
     name: "User Profile",
     path: "/profile",
