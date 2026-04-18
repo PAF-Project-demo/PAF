@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from "react-router";
 import LoadingIndicator from "../common/LoadingIndicator";
-import { isAdminRole } from "../../lib/auth";
+import { isAdminOrTechnicianRole, isAdminRole } from "../../lib/auth";
 import { useAuthSession } from "../../context/AuthSessionContext";
 
 const AuthGuardLoadingState = () => (
@@ -43,4 +43,21 @@ export function RequireAdmin() {
   }
 
   return isAdminRole(authSession.role) ? <Outlet /> : <Navigate to="/" replace />;
+}
+
+export function RequireStaff() {
+  const { authSession, isAuthReady } = useAuthSession();
+
+  if (!isAuthReady) {
+    return <AuthGuardLoadingState />;
+  }
+  if (!authSession) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  return isAdminOrTechnicianRole(authSession.role) ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/" replace />
+  );
 }
