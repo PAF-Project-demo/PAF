@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record EditTicketRequest(
-        @NotBlank(message = "Ticket title is required.")
+        @NotBlank(message = "Ticket title is required")
         @Size(max = 200, message = "Ticket title must be 200 characters or fewer.")
         String title,
         @NotBlank(message = "Description is required.")

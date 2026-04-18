@@ -173,7 +173,7 @@ export default function TicketCreatePage() {
     const nextErrors: CreateTicketFormErrors = {};
 
     if (!form.title.trim()) {
-      nextErrors.title = "Ticket title is required.";
+      nextErrors.title = "Ticket title is required";
     }
 
     if (!form.description.trim()) {
