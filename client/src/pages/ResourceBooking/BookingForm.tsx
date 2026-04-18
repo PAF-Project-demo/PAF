@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router";
 import { useNotification } from "../../components/common/NotificationProvider";
 import Button from "../../components/ui/button/Button";
 import DatePicker from "../../components/ui/DatePicker";
@@ -50,13 +51,16 @@ const assetTypeLabels: Record<string, string> = Object.entries(
 ).reduce((acc, [key, value]) => ({ ...acc, [key]: value.label }), {});
 
 export default function BookingForm({ resources }: BookingFormProps) {
+  const [searchParams] = useSearchParams();
+  const initialResourceId = searchParams.get("resourceId") || "";
+
   const { showNotification } = useNotification();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAssetType, setSelectedAssetType] = useState<string>("");
   const [resourceSearchQuery, setResourceSearchQuery] = useState<string>("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<CreateBookingRequest>({
-    resourceId: "",
+    resourceId: initialResourceId,
     date: "",
     startTime: "",
     endTime: "",
@@ -71,6 +75,16 @@ export default function BookingForm({ resources }: BookingFormProps) {
   const [hasConflict, setHasConflict] = useState(false);
   const [nextAvailableSlot, setNextAvailableSlot] = useState<{ availableStartTime: string; reason: string } | null>(null);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+
+  // Auto-select asset type based on initial resource from URL
+  useEffect(() => {
+    if (initialResourceId && resources.length > 0) {
+      const selectedRes = resources.find((r) => r.id === initialResourceId);
+      if (selectedRes) {
+        setSelectedAssetType(selectedRes.type);
+      }
+    }
+  }, [initialResourceId, resources]);
 
   // Filter resources based on selected asset type and search query
   const filteredResources = resources
