@@ -194,7 +194,7 @@ export default function BookingForm({ resources }: BookingFormProps) {
       }
     }
     if (name === "purpose" && !value) return "Purpose is required";
-    if (name === "attendees" && selectedResource && (selectedResource?.capacity ?? 0) > 0 && parseInt(value?.toString() || "0", 10) > (selectedResource?.capacity ?? 0)) {
+    if (name === "attendees" && selectedResource && selectedResource?.type !== "EQUIPMENT" && (selectedResource?.capacity ?? 0) > 0 && parseInt(value?.toString() || "0", 10) > (selectedResource?.capacity ?? 0)) {
       return `Exceeds capacity (max ${selectedResource?.capacity})`;
     }
     return null;
@@ -373,14 +373,17 @@ export default function BookingForm({ resources }: BookingFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section 1: SELECT RESOURCE */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <div className="mb-6 flex items-center gap-3 border-b border-gray-200 pb-4 dark:border-gray-700">
-            <div className="rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 p-3 shadow-md">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-lg transition-all dark:border-gray-700 dark:bg-gray-800">
+          <div className="mb-6 flex items-center gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
+            <div className="rounded-lg bg-gradient-to-br from-blue-400 via-brand-500 to-brand-600 p-3.5 shadow-lg">
               <GridIcon className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select Resource</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Step 1 of 3</p>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">🏢 Select Resource</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Choose your facility for booking</p>
+            </div>
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-100 to-brand-100 flex items-center justify-center font-bold text-lg text-brand-600 dark:bg-gradient-to-br dark:from-blue-900/30 dark:to-brand-900/30 dark:text-brand-400 shadow-md">
+              1
             </div>
           </div>
 
@@ -458,7 +461,7 @@ export default function BookingForm({ resources }: BookingFormProps) {
                 placeholder="🔍 Search resources by name, location, or type..."
                 value={resourceSearchQuery}
                 onChange={(e) => setResourceSearchQuery(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400"
+                className="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all shadow-sm hover:shadow-md dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:ring-brand-500/30"
               />
               {resourceSearchQuery && (
                 <button
@@ -487,10 +490,10 @@ export default function BookingForm({ resources }: BookingFormProps) {
               value={formData.resourceId}
               onChange={handleChange}
               required
-              className={`w-full rounded-lg border px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-white transition-all ${
+              className={`w-full rounded-lg border-2 px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-0 dark:bg-gray-800 dark:text-white transition-all shadow-sm hover:shadow-md ${
                 formErrors.resourceId
                   ? "border-red-300 focus:border-red-500 focus:ring-red-500/50 dark:border-red-600"
-                  : "border-gray-300 focus:border-brand-500 focus:ring-brand-500/50 dark:border-gray-600"
+                  : "border-gray-300 focus:border-brand-500 focus:ring-brand-500/50 dark:border-gray-600 dark:focus:ring-brand-500/30"
               }`}
             >
               <option value="">{filteredResources.length === 0 ? "❌ No resources found" : "📌 Select a resource..."}</option>
@@ -504,7 +507,7 @@ export default function BookingForm({ resources }: BookingFormProps) {
 
             {/* Resource Details Card */}
             {selectedResource && (
-              <div className="mt-4 rounded-lg border border-brand-200 bg-gradient-to-br from-brand-50 to-blue-50 p-5 dark:border-brand-900 dark:from-brand-950/30 dark:to-gray-900/30">
+              <div className="mt-4 rounded-lg border-2 border-brand-300 bg-gradient-to-br from-brand-50/90 to-blue-50/90 p-5 shadow-md dark:border-brand-700 dark:from-brand-950/40 dark:to-gray-900/40">
                 <div className="space-y-4">
                   {/* Header with name and type */}
                   <div className="flex items-start justify-between gap-3">
@@ -550,14 +553,17 @@ export default function BookingForm({ resources }: BookingFormProps) {
         </div>
 
         {/* Section 2: SCHEDULE BOOKING */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <div className="mb-6 flex items-center gap-3 border-b border-gray-200 pb-4 dark:border-gray-700">
-            <div className="rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 p-3 shadow-md">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-lg transition-all dark:border-gray-700 dark:bg-gray-800">
+          <div className="mb-6 flex items-center gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
+            <div className="rounded-lg bg-gradient-to-br from-cyan-400 via-blue-500 to-brand-600 p-3.5 shadow-lg">
               <CalenderIcon className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Schedule Booking</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Step 2 of 3</p>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">📅 Schedule Booking</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Set your date and time</p>
+            </div>
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-100 to-blue-100 flex items-center justify-center font-bold text-lg text-blue-600 dark:bg-gradient-to-br dark:from-cyan-900/30 dark:to-blue-900/30 dark:text-blue-400 shadow-md">
+              2
             </div>
           </div>
 
@@ -859,14 +865,17 @@ export default function BookingForm({ resources }: BookingFormProps) {
         </div>
 
         {/* Section 3: EVENT DETAILS */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <div className="mb-6 flex items-center gap-3 border-b border-gray-200 pb-4 dark:border-gray-700">
-            <div className="rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 p-3 shadow-md">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-lg transition-all dark:border-gray-700 dark:bg-gray-800">
+          <div className="mb-6 flex items-center gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
+            <div className="rounded-lg bg-gradient-to-br from-purple-400 via-pink-500 to-brand-600 p-3.5 shadow-lg">
               <InfoIcon className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Event Details</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Step 3 of 3</p>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">📋 Event Details</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Add purpose and attendees</p>
+            </div>
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center font-bold text-lg text-pink-600 dark:bg-gradient-to-br dark:from-purple-900/30 dark:to-pink-900/30 dark:text-pink-400 shadow-md">
+              3
             </div>
           </div>
 
@@ -886,10 +895,10 @@ export default function BookingForm({ resources }: BookingFormProps) {
                 required
                 placeholder="e.g., Team meeting for Q1 planning, Final project presentation, Weekly lab experiment"
                 rows={3}
-                className={`w-full rounded-lg border px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 transition-all dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 ${
+                className={`w-full rounded-lg border-2 px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 ${
                   formErrors.purpose
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500/50 dark:border-red-600"
-                    : "border-gray-300 focus:border-brand-500 focus:ring-brand-500/50 dark:border-gray-600"
+                    : "border-gray-300 focus:border-brand-500 focus:ring-brand-500/50 dark:border-gray-600 dark:focus:ring-brand-500/30"
                 }`}
               />
               {formErrors.purpose && <p className="mt-2 text-xs text-red-600 dark:text-red-400">⚠️ {formErrors.purpose}</p>}
@@ -901,9 +910,10 @@ export default function BookingForm({ resources }: BookingFormProps) {
             {/* Attendees */}
             <div>
               <div className="mb-3 flex items-center gap-2">
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">Number of Attendees *</label>
-                {selectedResource && formData.attendees <= (selectedResource?.capacity ?? 0) && <CheckCircleIcon className="h-4 w-4 text-green-500" />}
-                {selectedResource && formData.attendees > (selectedResource?.capacity ?? 0) && <AlertIcon className="h-4 w-4 text-red-500" />}
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">Number of Attendees {selectedResource?.type !== "EQUIPMENT" && "*"}</label>
+                {selectedResource?.type !== "EQUIPMENT" && formData.attendees <= (selectedResource?.capacity ?? 0) && <CheckCircleIcon className="h-4 w-4 text-green-500" />}
+                {selectedResource?.type !== "EQUIPMENT" && formData.attendees > (selectedResource?.capacity ?? 0) && <AlertIcon className="h-4 w-4 text-red-500" />}
+                {selectedResource?.type === "EQUIPMENT" && <span className="text-xs text-gray-500 dark:text-gray-400">(Not required for equipment)</span>}
               </div>
 
               {selectedResource ? (
@@ -915,52 +925,57 @@ export default function BookingForm({ resources }: BookingFormProps) {
                         name="attendees"
                         value={formData.attendees}
                         onChange={handleChange}
-                        required
+                        required={selectedResource?.type !== "EQUIPMENT"}
                         min="1"
-                        className={`w-full rounded-lg border px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 transition-all dark:bg-gray-800 dark:text-white ${
-                          formData.attendees > (selectedResource?.capacity ?? 0)
+                        disabled={selectedResource?.type === "EQUIPMENT"}
+                        className={`w-full rounded-lg border-2 px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md dark:bg-gray-800 dark:text-white ${
+                          selectedResource?.type === "EQUIPMENT"
+                            ? "border-gray-200 bg-gray-100 cursor-not-allowed dark:bg-gray-700 dark:border-gray-600"
+                            : formData.attendees > (selectedResource?.capacity ?? 0)
                             ? "border-red-300 focus:ring-red-500/50 dark:border-red-600"
-                            : "border-gray-300 focus:border-brand-500 focus:ring-brand-500/50 dark:border-gray-600"
+                            : "border-gray-300 focus:border-brand-500 focus:ring-brand-500/50 dark:border-gray-600 dark:focus:ring-brand-500/30"
                         }`}
                       />
                     </div>
-                    <span className="text-sm font-bold text-gray-600 dark:text-gray-400 whitespace-nowrap">of {selectedResource?.capacity}</span>
+                    {selectedResource?.type !== "EQUIPMENT" && <span className="text-sm font-bold text-gray-600 dark:text-gray-400 whitespace-nowrap">of {selectedResource?.capacity}</span>}
                   </div>
 
                   {/* Enhanced Capacity Bar */}
-                  <div className="space-y-2">
-                    <div className="relative h-3 overflow-hidden rounded-full bg-gray-200 shadow-inner dark:bg-gray-700">
-                      <div
-                        className={`h-full transition-all duration-300 ${
+                  {selectedResource?.type !== "EQUIPMENT" && (
+                    <div className="space-y-2">
+                      <div className="relative h-3 overflow-hidden rounded-full bg-gray-200 shadow-inner dark:bg-gray-700">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            formData.attendees > (selectedResource?.capacity ?? 0)
+                              ? "bg-red-500"
+                              : ((selectedResource?.capacity ?? 0) > 0 && (formData.attendees / (selectedResource?.capacity ?? 0)) * 100 > 75)
+                                ? "bg-orange-500"
+                                : "bg-green-500"
+                          }`}
+                          style={{ width: `${Math.min((selectedResource?.capacity ?? 0) > 0 ? (formData.attendees / (selectedResource?.capacity ?? 0)) * 100 : 0, 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className={`text-xs font-bold ${
                           formData.attendees > (selectedResource?.capacity ?? 0)
-                            ? "bg-red-500"
+                            ? "text-red-600 dark:text-red-400"
                             : ((selectedResource?.capacity ?? 0) > 0 && (formData.attendees / (selectedResource?.capacity ?? 0)) * 100 > 75)
-                              ? "bg-orange-500"
-                              : "bg-green-500"
-                        }`}
-                        style={{ width: `${Math.min((selectedResource?.capacity ?? 0) > 0 ? (formData.attendees / (selectedResource?.capacity ?? 0)) * 100 : 0, 100)}%` }}
-                      />
+                              ? "text-orange-600 dark:text-orange-400"
+                              : "text-green-600 dark:text-green-400"
+                        }`}>
+                          {formData.attendees > (selectedResource?.capacity ?? 0)
+                            ? `⚠️ Over capacity by ${formData.attendees - (selectedResource?.capacity ?? 0)}`
+                            : `${Math.round(((selectedResource?.capacity ?? 0) > 0 ? formData.attendees / (selectedResource?.capacity ?? 0) : 0) * 100)}% capacity`}
+                        </p>
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                          {selectedResource?.capacity && selectedResource.capacity - formData.attendees > 0 ? `${selectedResource.capacity - formData.attendees} seat${selectedResource.capacity - formData.attendees !== 1 ? "s" : ""} left` : "At capacity"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <p className={`text-xs font-bold ${
-                        formData.attendees > (selectedResource?.capacity ?? 0)
-                          ? "text-red-600 dark:text-red-400"
-                          : ((selectedResource?.capacity ?? 0) > 0 && (formData.attendees / (selectedResource?.capacity ?? 0)) * 100 > 75)
-                            ? "text-orange-600 dark:text-orange-400"
-                            : "text-green-600 dark:text-green-400"
-                      }`}>
-                        {formData.attendees > (selectedResource?.capacity ?? 0)
-                          ? `⚠️ Over capacity by ${formData.attendees - (selectedResource?.capacity ?? 0)}`
-                          : `${Math.round(((selectedResource?.capacity ?? 0) > 0 ? formData.attendees / (selectedResource?.capacity ?? 0) : 0) * 100)}% capacity`}
-                      </p>
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                        {selectedResource?.capacity && selectedResource.capacity - formData.attendees > 0 ? `${selectedResource.capacity - formData.attendees} seat${selectedResource.capacity - formData.attendees !== 1 ? "s" : ""} left` : "At capacity"}
-                      </span>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Capacity Warning */}
-                  {formData.attendees > (selectedResource?.capacity ?? 0) && (
+                  {selectedResource?.type !== "EQUIPMENT" && formData.attendees > (selectedResource?.capacity ?? 0) && (
                     <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-900/20">
                       <p className="text-xs font-semibold text-red-700 dark:text-red-400">
                         ⚠️ Selected attendees exceed the room capacity
@@ -976,7 +991,7 @@ export default function BookingForm({ resources }: BookingFormProps) {
                   onChange={handleChange}
                   required
                   min="1"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  className="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all shadow-sm hover:shadow-md dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:ring-brand-500/30"
                 />
               )}
             </div>
@@ -1154,14 +1169,14 @@ export default function BookingForm({ resources }: BookingFormProps) {
               });
               setFormErrors({});
             }}
-            className="flex-1 font-semibold"
+            className="flex-1 font-semibold rounded-lg border-2 border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-500 transition-all"
           >
             🔄 Clear Form
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting || completionPercentage < 100}
-            className={`flex-1 font-semibold text-base py-3 transition-all ${completionPercentage < 100 ? "opacity-50 cursor-not-allowed" : "hover:shadow-lg"}`}
+            className={`flex-1 font-semibold text-base py-3 rounded-lg bg-gradient-to-r from-brand-500 to-brand-600 text-white hover:shadow-xl hover:from-brand-600 hover:to-brand-700 transition-all ${completionPercentage < 100 ? "opacity-60 cursor-not-allowed" : "shadow-lg"}`}
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">

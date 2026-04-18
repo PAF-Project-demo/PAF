@@ -53,18 +53,6 @@ export default function MyBookings() {
     }
   };
 
-  const loadBookings = async () => {
-    try {
-      setIsLoading(true);
-      const data = await getUserBookings();
-      setBookings(data);
-    } catch (err) {
-      setError("Failed to load your bookings");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Group recurring bookings
   const getGroupedBookings = (): RecurringGroup[] => {
     const sorted = [...bookings].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -172,7 +160,10 @@ export default function MyBookings() {
       return;
     }
 
-    if (editFormData.attendees < 1) {
+    // Get selected resource to check type
+    const selectedResource = resources.find((r) => r.id === editFormData.resourceId);
+
+    if (selectedResource?.type !== "EQUIPMENT" && editFormData.attendees < 1) {
       showNotification({
         title: "Error",
         message: "Attendees must be at least 1",

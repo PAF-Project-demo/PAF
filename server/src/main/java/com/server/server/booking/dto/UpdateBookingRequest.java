@@ -27,7 +27,7 @@ public class UpdateBookingRequest {
     private String purpose;
 
     @NotNull(message = "Attendees count is required")
-    @Min(value = 1, message = "Attendees must be at least 1")
+    @Min(value = 0, message = "Attendees cannot be negative")
     private Integer attendees;
 
     // Constructors
