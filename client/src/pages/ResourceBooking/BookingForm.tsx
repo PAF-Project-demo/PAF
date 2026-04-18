@@ -298,6 +298,7 @@ export default function BookingForm({ resources }: BookingFormProps) {
 
     try {
       setIsSubmitting(true);
+      // Date is already in YYYY-MM-DD format from DatePicker
       await createBooking(formData);
 
       showNotification({
