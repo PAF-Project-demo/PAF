@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNotification } from "../../components/common/NotificationProvider";
 import { Link } from "react-router";
 import ComponentCard from "../../components/common/ComponentCard";
 import LoadingIndicator from "../../components/common/LoadingIndicator";
@@ -6,6 +7,7 @@ import PageBreadCrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import Button from "../../components/ui/button/Button";
 import {
+  deleteTicket,
   fetchTicketMeta,
   fetchTickets,
   subscribeToTicketDataChanges,
@@ -15,10 +17,39 @@ import TicketTable from "../../components/tickets/TicketTable";
 import type { TicketFilters, TicketMeta, TicketRecord } from "../../lib/ticketing/types";
 
 export default function TicketListPage() {
+  const { showNotification } = useNotification();
   const [meta, setMeta] = useState<TicketMeta | null>(null);
   const [tickets, setTickets] = useState<TicketRecord[]>([]);
   const [filters, setFilters] = useState<TicketFilters>({});
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleDelete = async (ticket: TicketRecord) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${ticket.title}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteTicket(ticket.id);
+      showNotification({
+        variant: "success",
+        title: "Ticket deleted",
+        message: `${ticket.ticketId} was deleted successfully.`,
+      });
+    } catch (error) {
+      showNotification({
+        variant: "error",
+        title: "Delete failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to delete the ticket right now.",
+      });
+    }
+  };
 
   useEffect(() => {
     const loadMeta = async () => {
@@ -102,7 +133,7 @@ export default function TicketListPage() {
               </p>
             </div>
           ) : (
-            <TicketTable tickets={tickets} />
+            <TicketTable tickets={tickets} onDelete={handleDelete} />
           )}
         </ComponentCard>
       </div>

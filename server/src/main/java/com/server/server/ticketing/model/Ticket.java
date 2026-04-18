@@ -46,6 +46,12 @@ public class Ticket {
 
     private LocalDateTime closedAt;
 
+    private boolean deleted;
+
+    private LocalDateTime deletedAt;
+
+    private String deletedByUserId;
+
     private List<TicketAttachment> attachments = new ArrayList<>();
 
     private List<TicketComment> comments = new ArrayList<>();
@@ -190,6 +196,30 @@ public class Ticket {
 
     public void setClosedAt(LocalDateTime closedAt) {
         this.closedAt = closedAt;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public String getDeletedByUserId() {
+        return deletedByUserId;
+    }
+
+    public void setDeletedByUserId(String deletedByUserId) {
+        this.deletedByUserId = deletedByUserId;
     }
 
     public List<TicketAttachment> getAttachments() {

@@ -6,6 +6,7 @@ import com.server.server.auth.exception.ForbiddenAccessException;
 import com.server.server.auth.repository.UserRepository;
 import com.server.server.ticketing.dto.AddTicketCommentRequest;
 import com.server.server.ticketing.dto.CreateTicketRequest;
+import com.server.server.ticketing.dto.EditTicketRequest;
 import com.server.server.ticketing.dto.TicketActivityItemResponse;
 import com.server.server.ticketing.dto.TicketActorResponse;
 import com.server.server.ticketing.dto.TicketAttachmentResponse;
@@ -13,6 +14,7 @@ import com.server.server.ticketing.dto.TicketCommentResponse;
 import com.server.server.ticketing.dto.TicketDashboardCardsResponse;
 import com.server.server.ticketing.dto.TicketDashboardChartsResponse;
 import com.server.server.ticketing.dto.TicketDashboardResponse;
+import com.server.server.ticketing.dto.TicketDeleteResponse;
 import com.server.server.ticketing.dto.TicketListResponse;
 import com.server.server.ticketing.dto.TicketLocationRequest;
 import com.server.server.ticketing.dto.TicketLocationResponse;
@@ -149,11 +151,66 @@ public class TicketService {
 
     public TicketResponse getTicketById(String actorUserId, String ticketId) {
         User actor = userAccessService.getAuthenticatedUser(actorUserId);
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new TicketNotFoundException("Ticket not found."));
+        Ticket ticket = getActiveTicket(ticketId);
 
         assertTicketAccess(actor, ticket);
         return mapToTicketResponse(synchronizeTicketRuntimeFields(ticket));
+    }
+
+    public TicketResponse editTicket(String actorUserId, String ticketId, EditTicketRequest request) {
+        User actor = userAccessService.getAuthenticatedUser(actorUserId);
+        Ticket ticket = getActiveTicket(ticketId);
+
+        assertTicketAccess(actor, ticket);
+
+        boolean changed = false;
+        TicketType nextType = request.type() != null ? request.type() : getTicketType(ticket);
+
+        String normalizedTitle = request.title().trim();
+        if (!Objects.equals(normalizedTitle, ticket.getTitle())) {
+            ticket.setTitle(normalizedTitle);
+            changed = true;
+        }
+
+        String normalizedDescription = request.description().trim();
+        if (!Objects.equals(normalizedDescription, ticket.getDescription())) {
+            ticket.setDescription(normalizedDescription);
+            changed = true;
+        }
+
+        if (request.type() != ticket.getType()) {
+            ticket.setType(request.type());
+            changed = true;
+        }
+
+        if (request.priority() != ticket.getPriority()) {
+            ticket.setPriority(request.priority());
+            changed = true;
+        }
+
+        String normalizedCategory = normalizeCategory(request.category());
+        if (!Objects.equals(normalizedCategory, ticket.getCategory())) {
+            ticket.setCategory(normalizedCategory);
+            changed = true;
+        }
+
+        TicketLocation nextLocation = mapToLocation(request.location(), nextType);
+        if (!locationsEqual(ticket.getLocation(), nextLocation)) {
+            ticket.setLocation(nextLocation);
+            changed = true;
+        }
+
+        if (!changed) {
+            return mapToTicketResponse(synchronizeTicketRuntimeFields(ticket));
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        prependActivity(ticket, buildActivity("TICKET_UPDATED", "Ticket updated.", now, actor));
+        ticket.setUpdatedAt(now);
+        synchronizeTicketRuntimeFields(ticket);
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+        return mapToTicketResponse(synchronizeTicketRuntimeFields(savedTicket));
     }
 
     public TicketResponse createTicket(String actorUserId, CreateTicketRequest request) {
@@ -172,6 +229,9 @@ public class TicketService {
         ticket.setReporter(buildTicketUserSummary(actor));
         ticket.setAssignedTechnician(null);
         ticket.setRequiresExtendedResolution(false);
+        ticket.setDeleted(false);
+        ticket.setDeletedAt(null);
+        ticket.setDeletedByUserId(null);
         ticket.setAttachments(new ArrayList<>());
         ticket.setComments(new ArrayList<>());
         ticket.setActivity(new ArrayList<>());
@@ -193,8 +253,7 @@ public class TicketService {
         User actor = userAccessService.getAuthenticatedUser(actorUserId);
         assertStaffAccess(actor);
 
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new TicketNotFoundException("Ticket not found."));
+        Ticket ticket = getActiveTicket(ticketId);
 
         LocalDateTime now = LocalDateTime.now();
         TicketPriority nextPriority = request.priority() != null ? request.priority() : getTicketPriority(ticket);
@@ -296,8 +355,7 @@ public class TicketService {
             throw new ForbiddenAccessException("Only admins can assign technicians.");
         }
 
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new TicketNotFoundException("Ticket not found."));
+        Ticket ticket = getActiveTicket(ticketId);
 
         TicketUserSummary previousAssignee = ticket.getAssignedTechnician();
         TicketUserSummary nextAssignee = null;
@@ -351,8 +409,7 @@ public class TicketService {
 
     public TicketResponse addComment(String actorUserId, String ticketId, AddTicketCommentRequest request) {
         User actor = userAccessService.getAuthenticatedUser(actorUserId);
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new TicketNotFoundException("Ticket not found."));
+        Ticket ticket = getActiveTicket(ticketId);
 
         assertTicketAccess(actor, ticket);
 
@@ -376,8 +433,7 @@ public class TicketService {
 
     public TicketResponse addAttachments(String actorUserId, String ticketId, MultipartFile[] attachments) {
         User actor = userAccessService.getAuthenticatedUser(actorUserId);
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new TicketNotFoundException("Ticket not found."));
+        Ticket ticket = getActiveTicket(ticketId);
 
         assertTicketAccess(actor, ticket);
 
@@ -423,6 +479,16 @@ public class TicketService {
 
         Ticket savedTicket = ticketRepository.save(ticket);
         return mapToTicketResponse(synchronizeTicketRuntimeFields(savedTicket));
+    }
+
+    public TicketDeleteResponse deleteTicket(String actorUserId, String ticketId) {
+        User actor = userAccessService.getAuthenticatedUser(actorUserId);
+        Ticket ticket = getActiveTicket(ticketId);
+
+        assertTicketAccess(actor, ticket);
+        ticketRepository.delete(ticket);
+
+        return new TicketDeleteResponse("Ticket deleted successfully.", ticket.getId());
     }
 
     public TicketDashboardResponse getDashboardSummary(String actorUserId) {
@@ -553,14 +619,29 @@ public class TicketService {
     }
 
     private List<Ticket> getScopedTickets(User actor) {
+        List<Ticket> activeTickets = ticketRepository.findAll(TICKET_SORT).stream()
+                .filter(ticket -> !isDeleted(ticket))
+                .toList();
+
         UserRole role = getUserRole(actor);
         if (role == UserRole.ADMIN || role == UserRole.TECHNICIAN) {
-            return ticketRepository.findAll(TICKET_SORT);
+            return activeTickets;
         }
 
-        return ticketRepository.findAll(TICKET_SORT).stream()
+        return activeTickets.stream()
                 .filter(ticket -> ticket.getReporter() != null && actor.getId().equals(ticket.getReporter().getId()))
                 .toList();
+    }
+
+    private Ticket getActiveTicket(String ticketId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found."));
+
+        if (isDeleted(ticket)) {
+            throw new TicketNotFoundException("Ticket not found.");
+        }
+
+        return ticket;
     }
 
     private boolean matchesFilters(
@@ -642,6 +723,10 @@ public class TicketService {
         if (role != UserRole.ADMIN && role != UserRole.TECHNICIAN) {
             throw new ForbiddenAccessException("Only technicians and admins can update ticket workflow.");
         }
+    }
+
+    private boolean isDeleted(Ticket ticket) {
+        return ticket.isDeleted();
     }
 
     private Ticket synchronizeTicketRuntimeFields(Ticket ticket) {

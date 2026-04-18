@@ -3,7 +3,9 @@ package com.server.server.ticketing.controller;
 import com.server.server.ticketing.dto.AddTicketCommentRequest;
 import com.server.server.ticketing.dto.AssignTechnicianRequest;
 import com.server.server.ticketing.dto.CreateTicketRequest;
+import com.server.server.ticketing.dto.EditTicketRequest;
 import com.server.server.ticketing.dto.TicketDashboardResponse;
+import com.server.server.ticketing.dto.TicketDeleteResponse;
 import com.server.server.ticketing.dto.TicketListResponse;
 import com.server.server.ticketing.dto.TicketMetaResponse;
 import com.server.server.ticketing.dto.TicketReportsResponse;
@@ -18,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -80,6 +83,15 @@ public class TicketController {
     }
 
     @PreAuthorize("isAuthenticated()")
+    @PutMapping("/tickets/{ticketId}/edit")
+    public ResponseEntity<TicketResponse> editTicket(
+            Authentication authentication,
+            @PathVariable String ticketId,
+            @Valid @RequestBody EditTicketRequest request) {
+        return ResponseEntity.ok(ticketService.editTicket(authentication.getName(), ticketId, request));
+    }
+
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/tickets")
     public ResponseEntity<TicketResponse> createTicket(
             Authentication authentication,
@@ -127,6 +139,14 @@ public class TicketController {
             @PathVariable String ticketId,
             @RequestPart("attachments") MultipartFile[] attachments) {
         return ResponseEntity.ok(ticketService.addAttachments(authentication.getName(), ticketId, attachments));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @DeleteMapping("/tickets/{ticketId}")
+    public ResponseEntity<TicketDeleteResponse> deleteTicket(
+            Authentication authentication,
+            @PathVariable String ticketId) {
+        return ResponseEntity.ok(ticketService.deleteTicket(authentication.getName(), ticketId));
     }
 
     @PreAuthorize("isAuthenticated()")

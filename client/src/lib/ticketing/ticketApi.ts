@@ -2,9 +2,11 @@ import { apiFetch, getApiMessage, parseResponsePayload } from "../auth";
 import type {
   CreateTicketInput,
   DashboardSummary,
+  EditTicketInput,
   TicketListResult,
   TicketMeta,
   TicketRecord,
+  TicketType,
   TicketReports,
   UpdateTicketInput,
 } from "./types";
@@ -42,7 +44,7 @@ export async function fetchTicketMeta(): Promise<TicketMeta> {
 
 export async function fetchTickets(searchParams: {
   search?: string;
-  type?: string;
+  type?: TicketType | "";
   priority?: string;
   status?: string;
   category?: string;
@@ -122,6 +124,40 @@ export async function createTicket(input: CreateTicketInput): Promise<TicketReco
 
   emitTicketDataChange();
   return ticketWithAttachments;
+}
+
+export async function editTicket(
+  ticketId: string,
+  input: EditTicketInput
+): Promise<TicketRecord> {
+  const response = await apiFetch(`/api/tickets/${ticketId}/edit`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      title: input.title.trim(),
+      description: input.description.trim(),
+      type: input.type,
+      priority: input.priority,
+      category: input.category.trim(),
+      location: {
+        building: input.location.building.trim(),
+        floor: input.location.floor?.trim() ?? "",
+        room: input.location.room?.trim() ?? "",
+        campus: input.location.campus?.trim() ?? "",
+        note: input.location.note?.trim() ?? "",
+      },
+    }),
+  });
+
+  const ticket = await parseApiResponse<TicketRecord>(
+    response,
+    "Unable to update the ticket right now."
+  );
+
+  emitTicketDataChange();
+  return ticket;
 }
 
 export async function updateTicket(
@@ -222,6 +258,19 @@ export async function fetchReports(): Promise<TicketReports> {
     response,
     "Unable to load ticket reports right now."
   );
+}
+
+export async function deleteTicket(ticketId: string): Promise<void> {
+  const response = await apiFetch(`/api/tickets/${ticketId}`, {
+    method: "DELETE",
+  });
+
+  await parseApiResponse<{ message?: string; ticketId?: string }>(
+    response,
+    "Unable to delete the ticket right now."
+  );
+
+  emitTicketDataChange();
 }
 
 export function subscribeToTicketDataChanges(listener: () => void) {

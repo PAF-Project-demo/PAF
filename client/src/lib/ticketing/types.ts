@@ -152,6 +152,15 @@ export interface CreateTicketInput {
   attachments?: File[];
 }
 
+export interface EditTicketInput {
+  title: string;
+  description: string;
+  type: TicketType;
+  priority: TicketPriority;
+  category: string;
+  location: TicketLocation;
+}
+
 export interface UpdateTicketInput {
   status?: TicketStatus;
   priority?: TicketPriority;
