@@ -7,8 +7,8 @@ import PageMeta from "../../components/common/PageMeta";
 import TroubleshootingPanel from "../../components/tickets/TroubleshootingPanel";
 import Alert from "../../components/ui/alert/Alert";
 import Button from "../../components/ui/button/Button";
+import { createTicket, fetchTicketMeta } from "../../lib/ticketing/ticketApi";
 import { getTroubleshootingTips } from "../../lib/ticketing/troubleshooting";
-import { createTicket, fetchTicketMeta } from "../../lib/ticketing/ticketService";
 import type {
   CreateTicketInput,
   TicketMeta,

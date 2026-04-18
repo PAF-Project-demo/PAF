@@ -5,13 +5,13 @@ import LoadingIndicator from "../../components/common/LoadingIndicator";
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import Button from "../../components/ui/button/Button";
-import TicketFiltersBar from "../../components/tickets/TicketFiltersBar";
-import TicketTable from "../../components/tickets/TicketTable";
 import {
   fetchTicketMeta,
   fetchTickets,
   subscribeToTicketDataChanges,
-} from "../../lib/ticketing/ticketService";
+} from "../../lib/ticketing/ticketApi";
+import TicketFiltersBar from "../../components/tickets/TicketFiltersBar";
+import TicketTable from "../../components/tickets/TicketTable";
 import type { TicketFilters, TicketMeta, TicketRecord } from "../../lib/ticketing/types";
 
 export default function TicketListPage() {

@@ -76,6 +76,8 @@ export interface TicketRecord {
   activity: TicketActivityItem[];
   createdAt: string;
   updatedAt: string;
+  allowedStatusOptions: TicketStatus[];
+  slaPolicy: TicketSlaPolicy;
 }
 
 export interface TicketMeta {

@@ -6,18 +6,17 @@ import LoadingIndicator from "../../components/common/LoadingIndicator";
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import Button from "../../components/ui/button/Button";
+import TicketPriorityBadge from "../../components/tickets/TicketPriorityBadge";
 import TicketStatusBadge from "../../components/tickets/TicketStatusBadge";
 import TicketSummaryCard from "../../components/tickets/TicketSummaryCard";
-import TicketPriorityBadge from "../../components/tickets/TicketPriorityBadge";
-import {
-  formatDateTime,
-  formatTicketLocation,
-  getTicketSlaPolicy,
-} from "../../lib/ticketing/helpers";
 import {
   fetchDashboardSummary,
   subscribeToTicketDataChanges,
-} from "../../lib/ticketing/ticketService";
+} from "../../lib/ticketing/ticketApi";
+import {
+  formatDateTime,
+  formatTicketLocation,
+} from "../../lib/ticketing/helpers";
 import type { DashboardSummary } from "../../lib/ticketing/types";
 
 const statusPresentation: Record<
@@ -622,7 +621,7 @@ export default function TicketDashboardPage() {
             ) : (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {summary.recentTickets.map((ticket) => {
-                  const slaPolicy = getTicketSlaPolicy(ticket);
+                  const slaPolicy = ticket.slaPolicy;
 
                   return (
                     <div
