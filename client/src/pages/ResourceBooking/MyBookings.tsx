@@ -7,6 +7,29 @@ import { Booking, getUserBookings, cancelBooking, updateBooking } from "../../li
 import { Resource, fetchResources } from "../../lib/resourceService";
 import { TrashBinIcon, PencilIcon } from "../../icons";
 
+// Asset type mapping for display
+const assetTypeConfig: Record<
+  string,
+  { label: string; badge: string }
+> = {
+  LECTURE_HALL: {
+    label: "Lecture Hall",
+    badge: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+  },
+  LAB: {
+    label: "Lab",
+    badge: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
+  },
+  MEETING_ROOM: {
+    label: "Meeting Room",
+    badge: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+  },
+  EQUIPMENT: {
+    label: "Equipment",
+    badge: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+  },
+};
+
 interface RecurringGroup {
   groupId: string;
   bookings: Booking[];
@@ -283,6 +306,8 @@ export default function MyBookings() {
                   <th className="border-r border-gray-200 px-3 py-3 text-left dark:border-gray-700 font-semibold" style={{ width: '120px' }}>Date</th>
                   <th className="border-r border-gray-200 px-3 py-3 text-left dark:border-gray-700 font-semibold" style={{ width: '130px' }}>Time</th>
                   <th className="border-r border-gray-200 px-3 py-3 text-left dark:border-gray-700 font-semibold" style={{ width: '150px' }}>Purpose</th>
+                  <th className="border-r border-gray-200 px-3 py-3 text-left dark:border-gray-700 font-semibold" style={{ width: '140px' }}>Resource</th>
+                  <th className="border-r border-gray-200 px-3 py-3 text-center dark:border-gray-700 font-semibold" style={{ width: '110px' }}>Type</th>
                   <th className="border-r border-gray-200 px-3 py-3 text-center dark:border-gray-700 font-semibold" style={{ width: '90px' }}>Attendees</th>
                   <th className="border-r border-gray-200 px-3 py-3 text-left dark:border-gray-700 font-semibold" style={{ width: '110px' }}>Status</th>
                   <th className="px-3 py-3 text-center dark:border-gray-700 font-semibold" style={{ width: '70px' }}>Action</th>
@@ -305,14 +330,14 @@ export default function MyBookings() {
                             </span>
                           </button>
                         </td>
-                        <td colSpan={6} style={{ padding: '12px' }}>
+                        <td colSpan={7} style={{ padding: '12px' }}>
                           <div className="flex items-center justify-between gap-4">
                             <div className="flex-1">
                               <p className="font-semibold text-blue-900 dark:text-blue-100 text-base">
                                 📋 Recurring: <span className="font-bold">{group.bookings[0].purpose}</span>
                               </p>
                               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                                ⏰ {group.bookings[0].startTime} - {group.bookings[0].endTime} &nbsp;•&nbsp; 📅 {group.bookings.length} sessions
+                                📍 <span className="font-semibold">{resources.find(r => r.id === group.bookings[0].resourceId)?.name || 'Unknown Resource'}</span> &nbsp;•&nbsp; ⏰ {group.bookings[0].startTime} - {group.bookings[0].endTime} &nbsp;•&nbsp; 📅 {group.bookings.length} sessions
                               </p>
                             </div>
                           </div>
@@ -343,6 +368,32 @@ export default function MyBookings() {
                           </td>
                           <td style={{ width: '150px', padding: '12px', borderRight: '1px solid' + (group.isRecurring ? '#dbeafe' : '#e5e7eb') }} className={group.isRecurring ? "dark:border-blue-900" : "dark:border-gray-700"}>
                             <span className="text-sm text-gray-900 dark:text-white font-medium">{booking.purpose}</span>
+                          </td>
+                          <td style={{ width: '140px', padding: '12px', borderRight: '1px solid' + (group.isRecurring ? '#dbeafe' : '#e5e7eb') }} className={group.isRecurring ? "dark:border-blue-900" : "dark:border-gray-700"}>
+                            {(() => {
+                              const resource = resources.find(r => r.id === booking.resourceId);
+                              return resource ? (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{resource.name}</span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">{resource.location}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Unknown Resource</span>
+                              );
+                            })()}
+                          </td>
+                          <td style={{ width: '110px', padding: '12px', textAlign: 'center', borderRight: '1px solid' + (group.isRecurring ? '#dbeafe' : '#e5e7eb') }} className={group.isRecurring ? "dark:border-blue-900" : "dark:border-gray-700"}>
+                            {(() => {
+                              const resource = resources.find(r => r.id === booking.resourceId);
+                              const typeConfig = resource ? assetTypeConfig[resource.type] : null;
+                              return typeConfig ? (
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${typeConfig.badge}`}>
+                                  {typeConfig.label}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Unknown</span>
+                              );
+                            })()}
                           </td>
                           <td style={{ width: '90px', padding: '12px', textAlign: 'center', borderRight: '1px solid' + (group.isRecurring ? '#dbeafe' : '#e5e7eb') }} className={group.isRecurring ? "dark:border-blue-900" : "dark:border-gray-700"}>
                             <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{booking.attendees}</span>
