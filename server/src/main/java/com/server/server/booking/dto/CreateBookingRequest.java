@@ -1,6 +1,7 @@
 package com.server.server.booking.dto;
 
 import jakarta.validation.constraints.*;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -14,6 +15,7 @@ public class CreateBookingRequest {
 
     @NotNull(message = "Date is required")
     @FutureOrPresent(message = "Booking date must be today or in the future")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate date;
 
     @NotNull(message = "Start time is required")
@@ -26,11 +28,12 @@ public class CreateBookingRequest {
     private String purpose;
 
     @NotNull(message = "Attendees count is required")
-    @Min(value = 1, message = "Attendees must be at least 1")
+    @Min(value = 0, message = "Attendees cannot be negative")
     private Integer attendees;
 
     // Recurrence fields
     private String recurrenceType; // "NONE", "DAILY", "WEEKLY", "MONTHLY"
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate recurrenceEndDate; // End date for recurrence
 
     // Constructors

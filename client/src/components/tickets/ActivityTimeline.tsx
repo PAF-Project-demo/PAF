@@ -22,7 +22,7 @@ export default function ActivityTimeline({
             <div className="pb-6">
               <p className="font-medium text-gray-900 dark:text-white">{item.message}</p>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {item.actor.fullName} • {item.actor.role}
+                {item.actor?.fullName ?? "Unknown"} • {item.actor?.role ?? "N/A"}
               </p>
               <p className="mt-1 text-xs uppercase tracking-wide text-gray-400">
                 {item.action}

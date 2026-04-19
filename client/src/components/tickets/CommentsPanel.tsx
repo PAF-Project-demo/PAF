@@ -45,10 +45,10 @@ export default function CommentsPanel({
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {comment.author.fullName}
+                      {comment.author?.fullName ?? "Unknown"}
                     </p>
                     <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                      {comment.author.role}
+                      {comment.author?.role ?? "N/A"}
                     </p>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">

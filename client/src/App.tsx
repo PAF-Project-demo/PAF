@@ -54,6 +54,7 @@ export default function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<TicketDashboardPage />} />
               <Route path="/dashboard/create-ticket" element={<TicketCreatePage />} />
+              <Route path="/dashboard/create-ticket/:ticketId/edit" element={<TicketCreatePage />} />
               <Route path="/dashboard/ticket-queue" element={<TicketListPage />} />
               <Route path="/tickets/:id" element={<TicketDetailsPage />} />
               <Route element={<RequireStaff />}>

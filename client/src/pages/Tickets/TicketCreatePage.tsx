@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useNotification } from "../../components/common/NotificationProvider";
 import ComponentCard from "../../components/common/ComponentCard";
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
@@ -7,10 +7,17 @@ import PageMeta from "../../components/common/PageMeta";
 import TroubleshootingPanel from "../../components/tickets/TroubleshootingPanel";
 import Alert from "../../components/ui/alert/Alert";
 import Button from "../../components/ui/button/Button";
+import {
+  createTicket,
+  editTicket,
+  fetchTicketById,
+  fetchTicketMeta,
+  uploadTicketAttachments,
+} from "../../lib/ticketing/ticketApi";
 import { getTroubleshootingTips } from "../../lib/ticketing/troubleshooting";
-import { createTicket, fetchTicketMeta } from "../../lib/ticketing/ticketService";
 import type {
   CreateTicketInput,
+  EditTicketInput,
   TicketMeta,
   TicketPriority,
   TicketType,
@@ -44,6 +51,7 @@ const getTextAreaFieldClassName = (hasError?: boolean) =>
   `${textAreaClassName} ${hasError ? "border-error-500 focus:ring-error-200 dark:border-error-500" : ""}`;
 
 export default function TicketCreatePage() {
+  const { ticketId } = useParams<{ ticketId?: string }>();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const [meta, setMeta] = useState<TicketMeta | null>(null);
@@ -65,12 +73,36 @@ export default function TicketCreatePage() {
       note: "",
     },
   });
+  const isEditMode = Boolean(ticketId);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const ticketMeta = await fetchTicketMeta();
+        const [ticketMeta, existingTicket] = await Promise.all([
+          fetchTicketMeta(),
+          ticketId ? fetchTicketById(ticketId) : Promise.resolve(null),
+        ]);
+
         setMeta(ticketMeta);
+
+        if (existingTicket) {
+          setForm({
+            title: existingTicket.title,
+            description: existingTicket.description,
+            type: existingTicket.type,
+            priority: existingTicket.priority,
+            category: existingTicket.category,
+            location: {
+              building: existingTicket.location.building ?? "",
+              floor: existingTicket.location.floor ?? "",
+              room: existingTicket.location.room ?? "",
+              campus: existingTicket.location.campus ?? "",
+              note: existingTicket.location.note ?? "",
+            },
+          });
+          return;
+        }
+
         setForm((current) => ({
           ...current,
           category: current.category || ticketMeta.categories[0] || "Other",
@@ -86,7 +118,7 @@ export default function TicketCreatePage() {
     };
 
     void load();
-  }, []);
+  }, [ticketId]);
 
   useEffect(() => {
     if (form.type !== "INCIDENT" && form.location.note) {
@@ -141,7 +173,7 @@ export default function TicketCreatePage() {
     const nextErrors: CreateTicketFormErrors = {};
 
     if (!form.title.trim()) {
-      nextErrors.title = "Ticket title is required.";
+      nextErrors.title = "Ticket title is required";
     }
 
     if (!form.description.trim()) {
@@ -179,26 +211,43 @@ export default function TicketCreatePage() {
 
     setIsSubmitting(true);
     try {
-      const created = await createTicket({
-        ...form,
-        attachments,
-      });
-      showNotification({
-        variant: "success",
-        title: "Ticket created",
-        message: `${created.ticketId} was submitted successfully.`,
-      });
-      navigate(`/tickets/${created.id}`);
+      if (isEditMode && ticketId) {
+        const updated = await editTicket(ticketId, form as EditTicketInput);
+
+        if (attachments.length > 0) {
+          await uploadTicketAttachments(ticketId, attachments);
+        }
+
+        showNotification({
+          variant: "success",
+          title: "Ticket updated",
+          message: `${updated.ticketId} was saved successfully.`,
+        });
+        navigate(`/tickets/${updated.id}`);
+      } else {
+        const created = await createTicket({
+          ...form,
+          attachments,
+        });
+        showNotification({
+          variant: "success",
+          title: "Ticket created",
+          message: `${created.ticketId} was submitted successfully.`,
+        });
+        navigate(`/tickets/${created.id}`);
+      }
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Unable to create the ticket right now.";
+          : isEditMode
+            ? "Unable to update the ticket right now."
+            : "Unable to create the ticket right now.";
 
       setSubmitError(message);
       showNotification({
         variant: "error",
-        title: "Ticket creation failed",
+        title: isEditMode ? "Ticket update failed" : "Ticket creation failed",
         message,
       });
     } finally {
@@ -209,23 +258,27 @@ export default function TicketCreatePage() {
   return (
     <>
       <PageMeta
-        title="Create Ticket | PAF"
-        description="Create a maintenance or incident ticket"
+        title={`${isEditMode ? "Edit" : "Create"} Ticket | PAF`}
+        description={`${isEditMode ? "Edit" : "Create"} a maintenance or incident ticket`}
       />
-      <PageBreadCrumb pageTitle="Create Ticket" />
+      <PageBreadCrumb pageTitle={isEditMode ? "Edit Ticket" : "Create Ticket"} />
 
       <div className="space-y-6">
         <TroubleshootingPanel tips={troubleshootingTips} />
 
         <ComponentCard
-          title="New Maintenance / Incident Ticket"
-          desc="Students submit the issue details here and choose a simple priority level for staff follow-up."
+          title={isEditMode ? "Edit Maintenance / Incident Ticket" : "New Maintenance / Incident Ticket"}
+          desc={
+            isEditMode
+              ? "Update the ticket details and save the latest information to the backend."
+              : "Students submit the issue details here and choose a simple priority level for staff follow-up."
+          }
         >
           <form className="space-y-6" onSubmit={handleSubmit} noValidate>
             {submitError ? (
               <Alert
                 variant="error"
-                title="Unable to create ticket"
+                title={isEditMode ? "Unable to update ticket" : "Unable to create ticket"}
                 message={submitError}
               />
             ) : null}
@@ -447,7 +500,7 @@ export default function TicketCreatePage() {
                   : "Fill in the required fields marked above before submitting."}
               </p>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Ticket"}
+                {isSubmitting ? (isEditMode ? "Saving..." : "Creating...") : isEditMode ? "Save Ticket" : "Create Ticket"}
               </Button>
             </div>
           </form>

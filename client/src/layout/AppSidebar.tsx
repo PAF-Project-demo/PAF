@@ -88,7 +88,7 @@ const AppSidebar: React.FC = () => {
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
-    index: number;
+    name: string;
   } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
     {}
@@ -114,11 +114,11 @@ const AppSidebar: React.FC = () => {
     let submenuMatched = false;
     ["main"].forEach((menuType) => {
       const items = menuType === "main" ? navItems : [];
-      items.forEach((nav, index) => {
+      items.forEach((nav) => {
         if (nav.subItems && isNavItemActive(nav)) {
           setOpenSubmenu({
             type: menuType as "main" | "others",
-            index,
+            name: nav.name,
           });
           submenuMatched = true;
         }
@@ -132,7 +132,7 @@ const AppSidebar: React.FC = () => {
 
   useEffect(() => {
     if (openSubmenu !== null) {
-      const key = `${openSubmenu.type}-${openSubmenu.index}`;
+      const key = `${openSubmenu.type}-${openSubmenu.name}`;
       if (subMenuRefs.current[key]) {
         setSubMenuHeight((prevHeights) => ({
           ...prevHeights,
@@ -156,16 +156,16 @@ const AppSidebar: React.FC = () => {
     };
   }, []);
 
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
+  const handleSubmenuToggle = (name: string, menuType: "main" | "others") => {
     setOpenSubmenu((prevOpenSubmenu) => {
       if (
         prevOpenSubmenu &&
         prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
+        prevOpenSubmenu.name === name
       ) {
         return null;
       }
-      return { type: menuType, index };
+      return { type: menuType, name };
     });
   };
 
@@ -192,15 +192,15 @@ const AppSidebar: React.FC = () => {
 
   const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
     <ul className="flex flex-col gap-4">
-      {items.map((nav, index) => (
+      {items.map((nav) => (
         <li key={nav.name}>
           {nav.subItems ? (
-            <div
-              className={`menu-item group ${
-                isNavItemActive(nav) ? "menu-item-active" : "menu-item-inactive"
-              } ${!isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"}`}
-            >
-              {nav.path ? (
+            nav.path ? (
+              <div
+                className={`menu-item group ${
+                  isNavItemActive(nav) ? "menu-item-active" : "menu-item-inactive"
+                } ${!isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"}`}
+              >
                 <Link
                   to={nav.path}
                   className={`flex min-w-0 flex-1 items-center gap-3 ${
@@ -220,39 +220,58 @@ const AppSidebar: React.FC = () => {
                     <span className="menu-item-text">{nav.name}</span>
                   )}
                 </Link>
-              ) : (
-                <>
-                  <span
-                    className={`menu-item-icon-size ${
-                      isNavItemActive(nav)
-                        ? "menu-item-icon-active"
-                        : "menu-item-icon-inactive"
-                    }`}
+                {(isExpanded || isHovered || isMobileOpen) && (
+                  <button
+                    type="button"
+                    onClick={() => handleSubmenuToggle(nav.name, menuType)}
+                    className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center"
+                    aria-label={`Toggle ${nav.name} submenu`}
                   >
-                    {nav.icon}
-                  </span>
-                  {(isExpanded || isHovered || isMobileOpen) && (
-                    <span className="menu-item-text">{nav.name}</span>
-                  )}
-                </>
-              )}
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <button
-                  type="button"
-                  onClick={() => handleSubmenuToggle(index, menuType)}
-                  className="ml-auto flex h-5 w-5 items-center justify-center"
-                  aria-label={`Toggle ${nav.name} submenu`}
+                    <ChevronDownIcon
+                      className={`w-5 h-5 transition-transform duration-200 ${
+                        openSubmenu?.type === menuType && openSubmenu?.name === nav.name
+                          ? "rotate-180 text-brand-500"
+                          : ""
+                      }`}
+                    />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleSubmenuToggle(nav.name, menuType)}
+                aria-expanded={
+                  openSubmenu?.type === menuType && openSubmenu?.name === nav.name
+                }
+                aria-label={`Toggle ${nav.name} submenu`}
+                className={`menu-item group flex w-full min-w-0 items-center gap-3 ${
+                  isNavItemActive(nav) ? "menu-item-active" : "menu-item-inactive"
+                } ${!isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"}`}
+              >
+                <span
+                  className={`menu-item-icon-size ${
+                    isNavItemActive(nav)
+                      ? "menu-item-icon-active"
+                      : "menu-item-icon-inactive"
+                  }`}
                 >
-                  <ChevronDownIcon
-                    className={`w-5 h-5 transition-transform duration-200 ${
-                      openSubmenu?.type === menuType && openSubmenu?.index === index
-                        ? "rotate-180 text-brand-500"
-                        : ""
-                    }`}
-                  />
-                </button>
-              )}
-            </div>
+                  {nav.icon}
+                </span>
+                {(isExpanded || isHovered || isMobileOpen) && (
+                  <>
+                    <span className="menu-item-text min-w-0 flex-1 text-left">{nav.name}</span>
+                    <ChevronDownIcon
+                      className={`ml-auto h-5 w-5 shrink-0 transition-transform duration-200 ${
+                        openSubmenu?.type === menuType && openSubmenu?.name === nav.name
+                          ? "rotate-180 text-brand-500"
+                          : ""
+                      }`}
+                    />
+                  </>
+                )}
+              </button>
+            )
           ) : (
             nav.path && (
               <Link
@@ -277,13 +296,13 @@ const AppSidebar: React.FC = () => {
           {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
             <div
               ref={(el) => {
-                subMenuRefs.current[`${menuType}-${index}`] = el;
+                subMenuRefs.current[`${menuType}-${nav.name}`] = el;
               }}
               className="overflow-hidden transition-all duration-300"
               style={{
                 height:
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? `${subMenuHeight[`${menuType}-${index}`]}px`
+                  openSubmenu?.type === menuType && openSubmenu?.name === nav.name
+                    ? `${subMenuHeight[`${menuType}-${nav.name}`]}px`
                     : "0px",
               }}
             >

@@ -130,13 +130,13 @@ export default function BookingCalendar() {
 
   return (
     <ComponentCard
-      title="Booking Calendar"
-      desc={`${events.length} booking${events.length !== 1 ? "s" : ""} scheduled`}
+      title="📅 Booking Calendar"
+      desc={`${events.length} booking${events.length !== 1 ? "s" : ""} scheduled • View and manage all bookings`}
     >
-      <div className="calendar-wrapper overflow-hidden rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <div className="calendar-wrapper overflow-hidden rounded-2xl border-2 border-gray-200 p-4 shadow-md hover:shadow-lg transition-shadow dark:border-gray-700">
         <style>{`
           .calendar-wrapper {
-            --fc-border-color: #d1d5db;
+            --fc-border-color: #e5e7eb;
             --fc-page-bg-color: transparent;
             --fc-neutral-bg-color: #f9fafb;
             --fc-event-bg-color: #3b82f6;
@@ -151,7 +151,7 @@ export default function BookingCalendar() {
           }
 
           .dark .calendar-wrapper {
-            --fc-border-color: #464646;
+            --fc-border-color: #374151;
             --fc-page-bg-color: transparent;
             --fc-neutral-bg-color: #1f2937;
             --fc-event-bg-color: #3b82f6;
@@ -166,42 +166,105 @@ export default function BookingCalendar() {
           }
 
           .fc-button-group .fc-button-primary {
-            background-color: #3b82f6;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             border-color: #1e40af;
             color: white;
+            font-weight: 600;
+            text-transform: capitalize;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
           }
 
-          .fc-button-group .fc-button-primary:hover {
-            background-color: #1e40af;
+          .fc-button-group .fc-button-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
             border-color: #1e3a8a;
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+            transform: translateY(-1px);
           }
 
           .fc-button-group .fc-button-primary.fc-button-active {
-            background-color: #1e40af;
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
             border-color: #1e3a8a;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
           }
 
           .fc .fc-button-primary:not(:disabled):active,
           .fc .fc-button-primary:not(:disabled).fc-button-active {
-            background-color: #1e40af;
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
             border-color: #1e3a8a;
+          }
+
+          .fc-daygrid-day {
+            transition: all 0.2s ease;
           }
 
           .fc-daygrid-day:hover {
             background-color: #f3f4f6;
+            box-shadow: inset 0 0 8px rgba(59, 130, 246, 0.1);
           }
 
           .dark .fc-daygrid-day:hover {
             background-color: #2d3748;
+            box-shadow: inset 0 0 8px rgba(59, 130, 246, 0.15);
+          }
+
+          .fc-col-header-cell {
+            padding: 12px 4px !important;
+            font-weight: 700;
+            background: linear-gradient(180deg, #f0f4f8 0%, #e8ecf1 100%);
+            border-color: #e5e7eb;
+          }
+
+          .dark .fc-col-header-cell {
+            background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+            border-color: #374151;
           }
 
           .fc-event {
             cursor: pointer;
-            border: 1px solid;
+            border: 2px solid;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
           }
 
           .fc-event:hover {
-            opacity: 0.8;
+            opacity: 1;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+          }
+
+          .fc-daygrid-event {
+            margin: 2px 0;
+          }
+
+          .fc-event-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 4px 6px;
+          }
+
+          .fc-button-prev,
+          .fc-button-next,
+          .fc-button-today {
+            padding: 0.5rem 1rem !important;
+          }
+
+          .fc-toolbar {
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+          }
+
+          .fc-toolbar-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 0;
+          }
+
+          .dark .fc-toolbar-title {
+            color: #f9fafb;
           }
         `}</style>
         <FullCalendar
@@ -231,22 +294,25 @@ export default function BookingCalendar() {
       </div>
 
       {/* Legend */}
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded bg-warning-500"></div>
-          <span className="text-sm text-gray-600 dark:text-gray-400">Pending</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded bg-success-500"></div>
-          <span className="text-sm text-gray-600 dark:text-gray-400">Approved</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded bg-error-500"></div>
-          <span className="text-sm text-gray-600 dark:text-gray-400">Rejected</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded bg-gray-400"></div>
-          <span className="text-sm text-gray-600 dark:text-gray-400">Cancelled</span>
+      <div className="mt-8">
+        <h3 className="mb-4 text-sm font-bold text-gray-700 dark:text-gray-300">📊 Status Legend</h3>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="flex items-center gap-3 rounded-lg border-2 border-gray-200 bg-white p-3 shadow-sm hover:shadow-md transition-all dark:border-gray-700 dark:bg-gray-800">
+            <div className="h-4 w-4 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 shadow-md"></div>
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Pending</span>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border-2 border-gray-200 bg-white p-3 shadow-sm hover:shadow-md transition-all dark:border-gray-700 dark:bg-gray-800">
+            <div className="h-4 w-4 rounded-full bg-gradient-to-r from-green-400 to-green-500 shadow-md"></div>
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Approved</span>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border-2 border-gray-200 bg-white p-3 shadow-sm hover:shadow-md transition-all dark:border-gray-700 dark:bg-gray-800">
+            <div className="h-4 w-4 rounded-full bg-gradient-to-r from-red-400 to-red-500 shadow-md"></div>
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Rejected</span>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border-2 border-gray-200 bg-white p-3 shadow-sm hover:shadow-md transition-all dark:border-gray-700 dark:bg-gray-800">
+            <div className="h-4 w-4 rounded-full bg-gradient-to-r from-gray-400 to-gray-500 shadow-md"></div>
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Cancelled</span>
+          </div>
         </div>
       </div>
     </ComponentCard>

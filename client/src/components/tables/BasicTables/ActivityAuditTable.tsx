@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import "flatpickr/dist/flatpickr.min.css";
 import Flatpickr from "react-flatpickr";
 import Label from "../../form/Label";
@@ -15,6 +16,7 @@ import Button from "../../ui/button/Button";
 import LoadingIndicator from "../../common/LoadingIndicator";
 import {
   apiFetch,
+  AUTH_CHANGE_EVENT,
   formatRoleLabel,
   parseResponsePayload,
 } from "../../../lib/auth";
@@ -114,6 +116,8 @@ const getVisiblePageNumbers = (currentPage: number, totalPages: number) => {
 };
 
 export default function ActivityAuditTable() {
+  const location = useLocation();
+  const [auditRefreshNonce, setAuditRefreshNonce] = useState(0);
   const [items, setItems] = useState<ActivityFeedItem[]>([]);
   const [searchSourceUsers, setSearchSourceUsers] = useState<AuditUserSuggestion[]>(
     []
@@ -141,6 +145,20 @@ export default function ActivityAuditTable() {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
+    const onAuthChange = () => {
+      setAuditRefreshNonce((n) => n + 1);
+    };
+    window.addEventListener(AUTH_CHANGE_EVENT, onAuthChange);
+    return () => {
+      window.removeEventListener(AUTH_CHANGE_EVENT, onAuthChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname !== "/audit-log") {
+      return;
+    }
+
     const abortController = new AbortController();
 
     const loadAuditLog = async () => {
@@ -164,7 +182,7 @@ export default function ActivityAuditTable() {
     return () => {
       abortController.abort();
     };
-  }, []);
+  }, [location.pathname, auditRefreshNonce]);
 
   useEffect(() => {
     const abortController = new AbortController();

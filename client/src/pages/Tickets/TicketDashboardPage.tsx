@@ -5,19 +5,19 @@ import ComponentCard from "../../components/common/ComponentCard";
 import LoadingIndicator from "../../components/common/LoadingIndicator";
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
+import Alert from "../../components/ui/alert/Alert";
 import Button from "../../components/ui/button/Button";
+import TicketPriorityBadge from "../../components/tickets/TicketPriorityBadge";
 import TicketStatusBadge from "../../components/tickets/TicketStatusBadge";
 import TicketSummaryCard from "../../components/tickets/TicketSummaryCard";
-import TicketPriorityBadge from "../../components/tickets/TicketPriorityBadge";
-import {
-  formatDateTime,
-  formatTicketLocation,
-  getTicketSlaPolicy,
-} from "../../lib/ticketing/helpers";
 import {
   fetchDashboardSummary,
   subscribeToTicketDataChanges,
-} from "../../lib/ticketing/ticketService";
+} from "../../lib/ticketing/ticketApi";
+import {
+  formatDateTime,
+  formatTicketLocation,
+} from "../../lib/ticketing/helpers";
 import type { DashboardSummary } from "../../lib/ticketing/types";
 
 const statusPresentation: Record<
@@ -99,16 +99,26 @@ function AnalyticsEmptyState({
 export default function TicketDashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     let isActive = true;
 
     const load = async () => {
       setIsLoading(true);
+      setLoadError("");
       try {
         const nextSummary = await fetchDashboardSummary();
         if (isActive) {
           setSummary(nextSummary);
+        }
+      } catch (error) {
+        if (isActive) {
+          setLoadError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load the ticketing dashboard right now."
+          );
         }
       } finally {
         if (isActive) {
@@ -171,7 +181,7 @@ export default function TicketDashboardPage() {
       />
       <PageBreadCrumb pageTitle="Ticketing Dashboard" />
 
-      {isLoading || !summary ? (
+      {isLoading ? (
         <div className="py-16">
           <LoadingIndicator
             className="mx-auto"
@@ -181,8 +191,22 @@ export default function TicketDashboardPage() {
             description="Preparing ticket summary, SLA health, and recent activity."
           />
         </div>
+      ) : !summary ? (
+        <Alert
+          variant="error"
+          title="Unable to load dashboard"
+          message={loadError || "No dashboard data is available right now."}
+        />
       ) : (
         <div className="space-y-6">
+          {loadError ? (
+            <Alert
+              variant="error"
+              title="Dashboard refresh failed"
+              message={loadError}
+            />
+          ) : null}
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <TicketSummaryCard
               label="Total Tickets"
@@ -622,7 +646,7 @@ export default function TicketDashboardPage() {
             ) : (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {summary.recentTickets.map((ticket) => {
-                  const slaPolicy = getTicketSlaPolicy(ticket);
+                  const slaPolicy = ticket.slaPolicy;
 
                   return (
                     <div
