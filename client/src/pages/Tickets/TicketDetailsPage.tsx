@@ -208,9 +208,9 @@ export default function TicketDetailsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Reporter</p>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  {ticket.reporter.fullName}
+                  {ticket.reporter?.fullName ?? "Unknown reporter"}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{ticket.reporter.email}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{ticket.reporter?.email ?? "No email available"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Due</p>
@@ -479,7 +479,7 @@ export default function TicketDetailsPage() {
                         {attachment.originalName}
                       </p>
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Uploaded by {attachment.uploadedBy.fullName} on{" "}
+                        Uploaded by {attachment.uploadedBy?.fullName ?? "Unknown"} on{" "}
                         {formatDateTime(attachment.uploadedAt)}
                       </p>
                     </div>

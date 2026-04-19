@@ -76,7 +76,7 @@ export default function TicketTable({
                   <div className="space-y-1">
                     <p>{formatTicketLocation(ticket.location)}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Reported by {ticket.reporter.fullName}
+                      Reported by {ticket.reporter?.fullName ?? "Unknown"}
                     </p>
                   </div>
                 </TableCell>

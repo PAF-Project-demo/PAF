@@ -2,7 +2,11 @@ import type { TicketPriority, TicketRecord, TicketStatus } from "./types";
 
 const closedStatuses: TicketStatus[] = ["RESOLVED", "CLOSED", "CANCELLED"];
 
-export function formatTicketLocation(ticketLocation: TicketRecord["location"]) {
+export function formatTicketLocation(ticketLocation: TicketRecord["location"] | null | undefined) {
+  if (!ticketLocation) {
+    return "No location provided";
+  }
+
   return [
     ticketLocation.building,
     ticketLocation.floor ? `Floor ${ticketLocation.floor}` : "",
