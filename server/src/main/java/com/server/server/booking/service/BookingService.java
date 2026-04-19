@@ -2,6 +2,7 @@ package com.server.server.booking.service;
 
 import com.server.server.booking.dto.BookingDTO;
 import com.server.server.booking.dto.CreateBookingRequest;
+import com.server.server.booking.dto.UpdateBookingRequest;
 import com.server.server.booking.dto.UpdateBookingStatusRequest;
 import com.server.server.booking.entity.Booking;
 import com.server.server.booking.entity.BookingStatus;
@@ -235,15 +236,32 @@ public class BookingService {
 
     /**
      * Get all bookings for the current user.
+     * If the user is an ADMIN, returns all bookings in the system.
+     * Otherwise, returns only the current user's bookings.
      *
-     * @return list of booking DTOs for the current user
+     * @return list of booking DTOs (all for admin, current user's for regular users)
      */
     public List<BookingDTO> getCurrentUserBookings() {
-        String userId = getCurrentUserId();
-        return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        // Check if the current user is an admin
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        
+        if (isAdmin) {
+            // Admin sees all bookings
+            return bookingRepository.findAll()
+                    .stream()
+                    .map(this::mapToDTO)
+                    .collect(Collectors.toList());
+        } else {
+            // Regular users see only their own bookings
+            String userId = getCurrentUserId();
+            return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                    .stream()
+                    .map(this::mapToDTO)
+                    .collect(Collectors.toList());
+        }
     }
 
     /**
@@ -291,6 +309,104 @@ public class BookingService {
 
         Booking updatedBooking = bookingRepository.save(booking);
         return mapToDTO(updatedBooking);
+    }
+
+    /**
+     * Update a booking (user can only update their own PENDING or APPROVED bookings).
+     * Checks for time conflicts after updating.
+     *
+     * @param id the booking ID
+     * @param updateRequest the update request with new booking details
+     * @return the updated booking DTO
+     * @throws BookingNotFoundException if booking not found
+     * @throws InvalidBookingException if booking is not owned by current user, cannot be updated, or has invalid data
+     * @throws TimeConflictException if new time conflicts with other bookings
+     */
+    public BookingDTO updateBooking(String id, UpdateBookingRequest updateRequest) {
+        String userId = getCurrentUserId();
+
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new BookingNotFoundException("Booking not found with id: " + id));
+
+        // Verify ownership
+        if (!booking.getUserId().equals(userId)) {
+            throw new InvalidBookingException("You can only update your own bookings");
+        }
+
+        // Verify booking can be updated (only PENDING or APPROVED)
+        if (booking.getStatus() != BookingStatus.PENDING && booking.getStatus() != BookingStatus.APPROVED) {
+            throw new InvalidBookingException(
+                    String.format("Cannot update booking with status: %s", booking.getStatus())
+            );
+        }
+
+        // Validate resource exists and is ACTIVE if resource is being changed
+        if (!booking.getResourceId().equals(updateRequest.getResourceId())) {
+            Resource resource = resourceRepository.findById(updateRequest.getResourceId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Resource not found with id: " + updateRequest.getResourceId()));
+
+            if (resource.getStatus() != ResourceStatus.ACTIVE) {
+                throw new InvalidBookingException("New resource is not available for booking");
+            }
+        }
+
+        // Validate time logic
+        if (!updateRequest.getEndTime().isAfter(updateRequest.getStartTime())) {
+            throw new InvalidBookingException("End time must be after start time");
+        }
+
+        // Check for time conflicts with the new resource/date/time
+        // Only check if resource, date, or time has changed
+        if (!booking.getResourceId().equals(updateRequest.getResourceId()) ||
+            !booking.getDate().equals(updateRequest.getDate()) ||
+            !booking.getStartTime().equals(updateRequest.getStartTime()) ||
+            !booking.getEndTime().equals(updateRequest.getEndTime())) {
+            
+            checkTimeConflictForUpdate(updateRequest.getResourceId(), updateRequest.getDate(),
+                    updateRequest.getStartTime(), updateRequest.getEndTime(), id);
+        }
+
+        // Update booking details
+        booking.setResourceId(updateRequest.getResourceId());
+        booking.setDate(updateRequest.getDate());
+        booking.setStartTime(updateRequest.getStartTime());
+        booking.setEndTime(updateRequest.getEndTime());
+        booking.setPurpose(updateRequest.getPurpose());
+        booking.setAttendees(updateRequest.getAttendees());
+
+        Booking updatedBooking = bookingRepository.save(booking);
+        return mapToDTO(updatedBooking);
+    }
+
+    /**
+     * Check time conflicts for update (excludes the booking being updated).
+     *
+     * @param resourceId the resource ID
+     * @param date the booking date
+     * @param startTime the start time
+     * @param endTime the end time
+     * @param excludeBookingId the booking ID to exclude from conflict check
+     * @throws TimeConflictException if a conflict is found
+     */
+    private void checkTimeConflictForUpdate(String resourceId, LocalDate date, LocalTime startTime,
+                                            LocalTime endTime, String excludeBookingId) {
+        List<Booking> existingBookings = bookingRepository.findByResourceIdAndDate(resourceId, date);
+
+        for (Booking existing : existingBookings) {
+            // Skip the booking being updated and cancelled bookings
+            if (existing.getId().equals(excludeBookingId) || existing.getStatus() == BookingStatus.CANCELLED) {
+                continue;
+            }
+
+            // Check for overlap only with PENDING and APPROVED bookings
+            if (existing.getStatus() == BookingStatus.PENDING || existing.getStatus() == BookingStatus.APPROVED) {
+                if (startTime.isBefore(existing.getEndTime()) && endTime.isAfter(existing.getStartTime())) {
+                    throw new TimeConflictException(
+                            "Time conflict detected: " + startTime + " - " + endTime + " overlaps with existing booking"
+                    );
+                }
+            }
+        }
     }
 
     /**
