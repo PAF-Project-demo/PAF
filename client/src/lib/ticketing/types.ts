@@ -76,6 +76,8 @@ export interface TicketRecord {
   activity: TicketActivityItem[];
   createdAt: string;
   updatedAt: string;
+  allowedStatusOptions: TicketStatus[];
+  slaPolicy: TicketSlaPolicy;
 }
 
 export interface TicketMeta {
@@ -148,6 +150,15 @@ export interface CreateTicketInput {
   location: TicketLocation;
   slaHours?: number;
   attachments?: File[];
+}
+
+export interface EditTicketInput {
+  title: string;
+  description: string;
+  type: TicketType;
+  priority: TicketPriority;
+  category: string;
+  location: TicketLocation;
 }
 
 export interface UpdateTicketInput {

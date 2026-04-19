@@ -4,12 +4,14 @@ import com.server.server.auth.exception.AuthConfigurationException;
 import com.server.server.auth.exception.DuplicateEmailException;
 import com.server.server.auth.exception.ForbiddenAccessException;
 import com.server.server.auth.exception.InvalidCredentialsException;
+import com.server.server.booking.exception.BookingNotFoundException;
+import com.server.server.booking.exception.InvalidBookingException;
+import com.server.server.booking.exception.TimeConflictException;
+import com.server.server.ticketing.exception.InvalidTicketException;
+import com.server.server.ticketing.exception.TicketNotFoundException;
 import com.server.server.user.exception.InvalidRoleRequestException;
 import com.server.server.user.exception.RoleRequestNotFoundException;
 import com.server.server.user.exception.UserNotFoundException;
-import com.server.server.booking.exception.TimeConflictException;
-import com.server.server.booking.exception.BookingNotFoundException;
-import com.server.server.booking.exception.InvalidBookingException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,6 +58,16 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(InvalidRoleRequestException.class)
     public ResponseEntity<ApiError> handleInvalidRoleRequest(InvalidRoleRequestException exception) {
+        return ResponseEntity.badRequest().body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler(TicketNotFoundException.class)
+    public ResponseEntity<ApiError> handleTicketNotFound(TicketNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidTicketException.class)
+    public ResponseEntity<ApiError> handleInvalidTicket(InvalidTicketException exception) {
         return ResponseEntity.badRequest().body(new ApiError(exception.getMessage()));
     }
 

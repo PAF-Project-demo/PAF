@@ -3,7 +3,6 @@ import {
   formatDateTime,
   formatTicketLocation,
   getTicketDueLabel,
-  getTicketSlaPolicy,
 } from "../../lib/ticketing/helpers";
 import type { TicketRecord } from "../../lib/ticketing/types";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../ui/table";
@@ -11,7 +10,13 @@ import Button from "../ui/button/Button";
 import TicketPriorityBadge from "./TicketPriorityBadge";
 import TicketStatusBadge from "./TicketStatusBadge";
 
-export default function TicketTable({ tickets }: { tickets: TicketRecord[] }) {
+export default function TicketTable({
+  tickets,
+  onDelete,
+}: {
+  tickets: TicketRecord[];
+  onDelete: (ticket: TicketRecord) => void;
+}) {
   return (
     <div className="max-w-full overflow-x-auto">
       <div className="min-w-[1100px]">
@@ -82,7 +87,7 @@ export default function TicketTable({ tickets }: { tickets: TicketRecord[] }) {
                       Due {formatDateTime(ticket.dueAt)}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {getTicketSlaPolicy(ticket).targetLabel}
+                      {ticket.slaPolicy.targetLabel}
                       {ticket.requiresExtendedResolution ? " | extended repair" : ""}
                     </p>
                   </div>
@@ -91,11 +96,21 @@ export default function TicketTable({ tickets }: { tickets: TicketRecord[] }) {
                   {ticket.assignedTechnician?.fullName ?? "Unassigned"}
                 </TableCell>
                 <TableCell className="px-5 py-4">
-                  <Link to={`/tickets/${ticket.id}`}>
-                    <Button size="sm" variant="outline">
-                      View details
+                  <div className="flex flex-wrap gap-2">
+                    <Link to={`/dashboard/create-ticket/${ticket.id}/edit`}>
+                      <Button size="sm" variant="outline">
+                        Edit
+                      </Button>
+                    </Link>
+                    <Button size="sm" variant="danger" onClick={() => onDelete(ticket)}>
+                      Delete
                     </Button>
-                  </Link>
+                    <Link to={`/tickets/${ticket.id}`}>
+                      <Button size="sm" variant="outline">
+                        View details
+                      </Button>
+                    </Link>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

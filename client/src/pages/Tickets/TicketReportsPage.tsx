@@ -5,7 +5,7 @@ import LoadingIndicator from "../../components/common/LoadingIndicator";
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import TicketSummaryCard from "../../components/tickets/TicketSummaryCard";
-import { fetchReports, subscribeToTicketDataChanges } from "../../lib/ticketing/ticketService";
+import { fetchReports, subscribeToTicketDataChanges } from "../../lib/ticketing/ticketApi";
 import type { TicketReports } from "../../lib/ticketing/types";
 
 export default function TicketReportsPage() {

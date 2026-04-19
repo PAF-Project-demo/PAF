@@ -9,30 +9,29 @@ import LoadingIndicator from "../../components/common/LoadingIndicator";
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import Button from "../../components/ui/button/Button";
+import { isAdminOrTechnicianRole, isAdminRole } from "../../lib/auth";
 import {
-  canManageTickets,
   formatDateTime,
   formatTicketLocation,
-  getAllowedStatusOptions,
   getTicketDueLabel,
-  getTicketSlaPolicy,
 } from "../../lib/ticketing/helpers";
 import {
   addTicketComment,
   assignTechnician,
   fetchTicketById,
   fetchTicketMeta,
-  getCurrentUserRole,
   updateTicket,
   uploadTicketAttachments,
-} from "../../lib/ticketing/ticketService";
+} from "../../lib/ticketing/ticketApi";
 import type { TicketMeta, TicketPriority, TicketRecord, TicketStatus } from "../../lib/ticketing/types";
+import { useAuthSession } from "../../context/AuthSessionContext";
 
 const fieldClassName =
   "h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white";
 
 export default function TicketDetailsPage() {
   const { id = "" } = useParams();
+  const { authSession } = useAuthSession();
   const [ticket, setTicket] = useState<TicketRecord | null>(null);
   const [meta, setMeta] = useState<TicketMeta | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,25 +41,17 @@ export default function TicketDetailsPage() {
   const [priority, setPriority] = useState<TicketPriority>("MEDIUM");
   const [requiresExtendedResolution, setRequiresExtendedResolution] = useState(false);
   const [technicianId, setTechnicianId] = useState("");
-  const currentRole = getCurrentUserRole();
+  const currentRole = authSession?.role ?? "USER";
 
-  const canManage = useMemo(() => canManageTickets(currentRole), [currentRole]);
-  const isAdmin = currentRole === "ADMIN";
-  const isStudent = !canManage;
-  const slaPolicy = useMemo(
-    () => getTicketSlaPolicy({ priority, requiresExtendedResolution }),
-    [priority, requiresExtendedResolution]
+  const canManage = useMemo(
+    () => isAdminOrTechnicianRole(currentRole),
+    [currentRole]
   );
+  const isAdmin = isAdminRole(currentRole);
+  const isStudent = !canManage;
   const availableStatuses = useMemo(
-    () =>
-      ticket
-        ? getAllowedStatusOptions({
-            status: ticket.status,
-            priority,
-            requiresExtendedResolution,
-          })
-        : (["OPEN"] as TicketStatus[]),
-    [priority, requiresExtendedResolution, ticket]
+    () => ticket?.allowedStatusOptions ?? (["OPEN"] as TicketStatus[]),
+    [ticket]
   );
 
   const loadTicket = async () => {
@@ -106,6 +97,8 @@ export default function TicketDetailsPage() {
     );
   }
 
+  const slaPolicy = ticket.slaPolicy;
+
   const handleUpdate = async () => {
     if (!canManage) {
       return;
@@ -122,9 +115,7 @@ export default function TicketDetailsPage() {
       }
 
       if (isAdmin && !technicianId && ticket.assignedTechnician) {
-        nextTicket = await updateTicket(ticket.id, {
-          assignedTechnician: null,
-        });
+        nextTicket = await assignTechnician(ticket.id, null);
       }
 
       if (
@@ -384,7 +375,7 @@ export default function TicketDetailsPage() {
                     ))}
                   </select>
                   <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    Available stages are based on the current workflow position and SLA rule.
+                    Available stages come from the current backend workflow rules.
                   </p>
                 </div>
 
