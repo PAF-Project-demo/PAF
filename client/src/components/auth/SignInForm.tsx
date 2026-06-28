@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
@@ -53,6 +53,7 @@ export default function SignInForm() {
   const [githubError, setGithubError] = useState("");
   const [googleError, setGoogleError] = useState("");
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const isAuthenticating = isSubmitting || isGoogleSubmitting;
   const loadingLabel = isGoogleSubmitting
     ? "Signing in with Google"
@@ -254,6 +255,19 @@ export default function SignInForm() {
     }
   };
 
+  const handleUseDemo = () => {
+    setFormData({
+      email: "demo@devgen.com",
+      password: "Demo@123",
+    });
+    setErrors({});
+    setServerError("");
+    setLinkedinError("");
+    setGithubError("");
+    setGoogleError("");
+    formRef.current?.requestSubmit();
+  };
+
   const handleGoogleSignIn = async (credential: string) => {
     setServerError("");
     setLinkedinError("");
@@ -348,7 +362,7 @@ export default function SignInForm() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form ref={formRef} onSubmit={handleSubmit}>
               <div className="space-y-5">
                 <div>
                   <Label htmlFor="email">
@@ -433,6 +447,22 @@ export default function SignInForm() {
                 >
                   {isSubmitting ? "Signing in" : "Sign in"}
                 </Button>
+
+                <Button
+                  className="w-full"
+                  size="sm"
+                  variant="outline"
+                  type="button"
+                  disabled={isAuthenticating}
+                  onClick={handleUseDemo}
+                >
+                  Use demo account
+                </Button>
+
+                <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+                  Demo signs in as <span className="font-medium">ADMIN</span>
+                  {" "}with <span className="font-mono">demo@devgen.com</span>
+                </p>
               </div>
             </form>
 
