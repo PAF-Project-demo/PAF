@@ -32,6 +32,12 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
+    {
+    icon: <PieChartIcon />,
+    name: "Reports",
+    path: "/reports",
+    roles: ["ADMIN", "TECHNICIAN"],
+  },
   {
     icon: <TaskIcon />,
     name: "Ticket Dashboard",
@@ -41,12 +47,7 @@ const navItems: NavItem[] = [
       { name: "Ticket Queue", path: "/dashboard/ticket-queue" },
     ],
   },
-  {
-    icon: <PieChartIcon />,
-    name: "Reports",
-    path: "/reports",
-    roles: ["ADMIN", "TECHNICIAN"],
-  },
+
   {
     icon: <BoxCubeIcon />, // Assuming this icon is suitable
     name: "Facilities & Assets",
@@ -67,8 +68,6 @@ const navItems: NavItem[] = [
     icon: <TaskIcon />,
     subItems: [
       { name: "Book Resource", path: "/bookings", pro: false },
-      { name: "My Bookings", path: "/bookings", pro: false },
-      { name: "Calendar", path: "/bookings", pro: false },
     ],
   },
     {
